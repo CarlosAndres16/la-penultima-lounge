@@ -1,0 +1,5 @@
+{
+  "name": "la-penultima-lounge",
+  "private": true,
+  "workspaces": ["gateway", "services/*", "packages/*"]
+}
