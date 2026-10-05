@@ -1,0 +1,117 @@
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #121212; /* Fondo oscuro */
+  background-image: radial-gradient(circle at center, #1e1e1e 0%, #0a0a0a 100%);
+  color: #e0e0e0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  width: 100vw;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.login-box {
+  background-color: #1a1a1a;
+  border: 1px solid #3d2c23; /* Tono café muy oscuro */
+  border-radius: 12px;
+  padding: 3rem 2.5rem;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), 0 0 15px rgba(212, 175, 55, 0.1); /* Brillo dorado tenue */
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.login-header h1 {
+  color: #d4af37; /* Dorado metálico */
+  font-size: 2.2rem;
+  margin: 0 0 0.5rem 0;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.login-header p {
+  color: #a89f91; /* Beige/Café claro */
+  font-size: 1rem;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+}
+
+.error-message {
+  background-color: rgba(220, 53, 69, 0.1);
+  border: 1px solid #dc3545;
+  color: #ff6b6b;
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: left;
+}
+
+.input-group label {
+  color: #d4af37; /* Dorado */
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.input-group input {
+  background-color: #2a2a2a;
+  border: 1px solid #4a3b32; /* Café medio */
+  color: #ffffff;
+  padding: 0.8rem 1rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.input-group input:focus {
+  outline: none;
+  border-color: #d4af37; /* Borde dorado al hacer focus */
+  box-shadow: 0 0 5px rgba(212, 175, 55, 0.3);
+}
+
+.login-button {
+  background-color: #5d4037; /* Café oscuro */
+  background-image: linear-gradient(135deg, #5d4037 0%, #3e2723 100%);
+  color: #d4af37; /* Texto dorado */
+  border: 1px solid #8d6e63;
+  padding: 1rem;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.login-button:hover {
+  background-image: linear-gradient(135deg, #6d4c41 0%, #4e342e 100%);
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+  transform: translateY(-2px);
+}
+
+.login-button:active {
+  transform: translateY(0);
+}

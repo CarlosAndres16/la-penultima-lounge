@@ -1,0 +1,85 @@
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background-color: #1a1a1a;
+  border-bottom: 2px solid #5d4037;
+  color: #e0e0e0;
+}
+
+.navbar-brand h2 {
+  margin: 0;
+  color: #d4af37; /* Dorado */
+  font-size: 1.5rem;
+}
+
+.navbar-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.branch-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.branch-selector label {
+  color: #a89f91;
+  font-weight: 500;
+}
+
+.dropdown {
+  background-color: #2a2a2a;
+  color: #fff;
+  border: 1px solid #4a3b32;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  outline: none;
+}
+
+.dropdown:focus {
+  border-color: #d4af37;
+}
+
+.branch-fixed .badge {
+  background-color: #3e2723;
+  color: #d4af37;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  border: 1px solid #8d6e63;
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.user-info {
+  font-size: 0.95rem;
+}
+
+.user-info small {
+  color: #a89f91;
+}
+
+.logout-btn {
+  background-color: transparent;
+  color: #dc3545;
+  border: 1px solid #dc3545;
+  padding: 0.4rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.logout-btn:hover {
+  background-color: #dc3545;
+  color: white;
+}
