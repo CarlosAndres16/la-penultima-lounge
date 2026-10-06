@@ -1,6 +1,6 @@
 import express from 'express';
 import pool from '../db.js';
-import { requireAuth, requireRole } from '@lounge/common';
+import { requireAuth, requireRole, requireSameSede } from '@lounge/common';
 
 const router = express.Router();
 const authMiddleware = requireAuth((text, params) => pool.query(text, params));
@@ -8,15 +8,15 @@ const adminOnly = requireRole(['Administrador']);
 
 router.use(authMiddleware);
 
-router.get('/', async (req, res) => {
-  const { sedeId, search, estado } = req.query;
+router.get('/', requireSameSede, async (req, res) => {
+  const { sedeId, search, estado, tipo } = req.query;
 
   try {
     const params = [];
     const whereClauses = [];
-    // Base SELECT
     let query = `
-      SELECT p.id_producto, p.nombre_producto, p.precio_venta, p.estado,
+      SELECT p.id_producto, p.codigo_producto, p.nombre_producto, p.tipo_producto,
+             p.valor_compra, p.precio_venta, p.estado,
              COALESCE(pr.nombre_proveedor, 'Sin proveedor') AS nombre_proveedor,
              COALESCE(SUM(i.cantidad_disponible), 0)::INT AS stock_total
       FROM productos p
@@ -28,9 +28,13 @@ router.get('/', async (req, res) => {
       params.push(estado);
       whereClauses.push(`p.estado = $${params.length}`);
     }
+    if (tipo) {
+      params.push(tipo);
+      whereClauses.push(`p.tipo_producto = $${params.length}`);
+    }
     if (search && search.trim() !== '') {
       params.push(`%${search}%`);
-      whereClauses.push(`(p.nombre_producto ILIKE $${params.length} OR p.id_producto::text ILIKE $${params.length})`);
+      whereClauses.push(`(p.nombre_producto ILIKE $${params.length} OR p.codigo_producto ILIKE $${params.length})`);
     }
     if (sedeId && sedeId !== 'ALL') {
       params.push(sedeId);
@@ -42,7 +46,7 @@ router.get('/', async (req, res) => {
     }
 
     query += `
-      GROUP BY p.id_producto, p.nombre_producto, p.precio_venta, p.estado, pr.nombre_proveedor
+      GROUP BY p.id_producto, p.codigo_producto, p.nombre_producto, p.tipo_producto, p.valor_compra, p.precio_venta, p.estado, pr.nombre_proveedor
       ORDER BY p.id_producto DESC`;
 
     const result = await pool.query(query, params);
@@ -54,56 +58,97 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/', adminOnly, async (req, res) => {
-  const { id_proveedor, nombre_producto, precio_venta } = req.body;
-  
+  const { codigo_producto, id_proveedor, nombre_producto, tipo_producto, valor_compra, precio_venta, confirmar } = req.body;
+
+  if (!codigo_producto || !id_proveedor || !nombre_producto || !tipo_producto || valor_compra == null || precio_venta == null) {
+    return res.status(400).json({ error: 'Este campo es obligatorio' });
+  }
+
+  if (Number(precio_venta) <= Number(valor_compra) && !confirmar) {
+    return res.status(409).json({
+      warning: true,
+      error: 'El valor de venta es menor o igual al valor de compra. ¿Desea continuar?'
+    });
+  }
+
+  const client = await pool.connect();
   try {
-    await pool.query('BEGIN');
-    
-    // 1. Insertar el producto
-    const result = await pool.query(
-      'INSERT INTO productos (id_proveedor, nombre_producto, precio_venta, estado) VALUES ($1, $2, $3, $4) RETURNING *',
-      [id_proveedor, nombre_producto, precio_venta, 'Activo']
+    await client.query('BEGIN');
+
+    const result = await client.query(
+      'INSERT INTO productos (codigo_producto, id_proveedor, nombre_producto, tipo_producto, valor_compra, precio_venta, estado) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [codigo_producto, id_proveedor, nombre_producto, tipo_producto, valor_compra, precio_venta, 'Activo']
     );
     const newProduct = result.rows[0];
 
-    // 2. HU-13: "existencia inicial en cero (0) para todas las sedes"
-    const sedesRes = await pool.query('SELECT id_sede FROM sedes');
-    for (let sede of sedesRes.rows) {
-      await pool.query(
+    const sedesRes = await client.query('SELECT id_sede FROM sedes');
+    for (const sede of sedesRes.rows) {
+      await client.query(
         'INSERT INTO inventario_sede (id_sede, id_producto, cantidad_disponible) VALUES ($1, $2, 0)',
         [sede.id_sede, newProduct.id_producto]
       );
     }
 
-    // 3. Auditoría (HU-14 indica llevar audit, lo agregamos aquí también)
-    await pool.query(
+    await client.query(
       `INSERT INTO audit_logs (usuario_id, tipo_operacion, detalles) VALUES ($1, $2, $3)`,
-      [req.user.id_usuario, 'CREATE_PRODUCT', `Creado producto ${nombre_producto}`]
-    ).catch(() => {}); // catch por si audit_logs no existe
+      [req.user.id_usuario, 'CREATE_PRODUCT', `Creado producto ${nombre_producto} (${codigo_producto})`]
+    );
 
-    await pool.query('COMMIT');
+    await client.query('COMMIT');
     res.status(201).json(newProduct);
   } catch (error) {
-    await pool.query('ROLLBACK');
+    await client.query('ROLLBACK');
+    if (error.code === '23505') {
+      return res.status(400).json({ error: 'El código de producto ya existe' });
+    }
     console.error('Error creando producto:', error);
     res.status(500).json({ error: 'Error interno' });
+  } finally {
+    client.release();
   }
 });
 
 router.put('/:id', adminOnly, async (req, res) => {
   const { id } = req.params;
-  const { id_proveedor, nombre_producto, precio_venta } = req.body;
-  
+  const { id_proveedor, nombre_producto, tipo_producto, valor_compra, precio_venta } = req.body;
+
+  if (!id_proveedor || !nombre_producto || !tipo_producto || valor_compra == null || precio_venta == null) {
+    return res.status(400).json({ error: 'Este campo es obligatorio' });
+  }
+
   try {
+    const actualRes = await pool.query('SELECT * FROM productos WHERE id_producto = $1', [id]);
+    const actual = actualRes.rows[0];
+
+    if (!actual) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+
     const result = await pool.query(
-      'UPDATE productos SET id_proveedor = $1, nombre_producto = $2, precio_venta = $3 WHERE id_producto = $4 RETURNING *',
-      [id_proveedor, nombre_producto, precio_venta, id]
+      'UPDATE productos SET id_proveedor = $1, nombre_producto = $2, tipo_producto = $3, valor_compra = $4, precio_venta = $5 WHERE id_producto = $6 RETURNING *',
+      [id_proveedor, nombre_producto, tipo_producto, valor_compra, precio_venta, id]
     );
 
-    await pool.query(
-      `INSERT INTO audit_logs (usuario_id, tipo_operacion, detalles) VALUES ($1, $2, $3)`,
-      [req.user.id_usuario, 'UPDATE_PRODUCT', `Editado producto ${id}`]
-    ).catch(() => {});
+    const cambios = [];
+    if (Number(actual.valor_compra) !== Number(valor_compra)) {
+      cambios.push(`valor de compra: $${actual.valor_compra} -> $${valor_compra}`);
+    }
+    if (Number(actual.precio_venta) !== Number(precio_venta)) {
+      cambios.push(`valor de venta: $${actual.precio_venta} -> $${precio_venta}`);
+    }
+    if (actual.id_proveedor !== id_proveedor) {
+      cambios.push('proveedor actualizado');
+    }
+    if (actual.nombre_producto !== nombre_producto) {
+      cambios.push(`nombre: ${actual.nombre_producto} -> ${nombre_producto}`);
+    }
+
+    if (cambios.length > 0) {
+      await pool.query(
+        `INSERT INTO audit_logs (usuario_id, tipo_operacion, detalles) VALUES ($1, $2, $3)`,
+        [req.user.id_usuario, 'UPDATE_PRODUCT', `Producto ${id}: ${cambios.join(', ')}`]
+      );
+    }
 
     res.json(result.rows[0]);
   } catch (error) {
@@ -114,10 +159,16 @@ router.put('/:id', adminOnly, async (req, res) => {
 
 router.patch('/:id/status', adminOnly, async (req, res) => {
   const { id } = req.params;
-  const { estado } = req.body; // 'Activo' o 'Inactivo'
+  const { estado } = req.body;
 
   try {
     await pool.query('UPDATE productos SET estado = $1 WHERE id_producto = $2', [estado, id]);
+
+    await pool.query(
+      `INSERT INTO audit_logs (usuario_id, tipo_operacion, detalles) VALUES ($1, $2, $3)`,
+      [req.user.id_usuario, 'CHANGE_PRODUCT_STATUS', `Producto ${id} marcado como ${estado}`]
+    );
+
     res.json({ message: `Producto marcado como ${estado}` });
   } catch (error) {
     console.error('Error cambiando estado producto:', error);
@@ -126,4 +177,3 @@ router.patch('/:id/status', adminOnly, async (req, res) => {
 });
 
 export default router;
-

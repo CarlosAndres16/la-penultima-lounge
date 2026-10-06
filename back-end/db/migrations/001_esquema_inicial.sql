@@ -4,6 +4,7 @@
 
 CREATE TABLE sedes (
  id_sede SERIAL PRIMARY KEY,
+ codigo_sede VARCHAR(20) NOT NULL UNIQUE,
  nombre_sede VARCHAR(100) NOT NULL,
  direccion VARCHAR(255) NOT NULL,
  estado VARCHAR(20) DEFAULT 'Activo'
@@ -17,8 +18,10 @@ CREATE TABLE roles (
 CREATE TABLE proveedores (
  id_proveedor SERIAL PRIMARY KEY,
  nombre_proveedor VARCHAR(100) NOT NULL,
+ identificacion VARCHAR(50),
  contacto VARCHAR(100),
- telefono VARCHAR(20)
+ telefono VARCHAR(20),
+ correo VARCHAR(100)
 );
 
 CREATE TABLE medios_pago (
@@ -29,6 +32,7 @@ CREATE TABLE medios_pago (
 
 CREATE TABLE usuarios (
  id_usuario SERIAL PRIMARY KEY,
+ codigo_usuario VARCHAR(20) NOT NULL UNIQUE,
  id_rol INT NOT NULL,
  id_sede INT,
  nombre_completo VARCHAR(150) NOT NULL,
@@ -43,8 +47,11 @@ CREATE TABLE usuarios (
 
 CREATE TABLE productos (
  id_producto SERIAL PRIMARY KEY,
+ codigo_producto VARCHAR(20) NOT NULL UNIQUE,
  id_proveedor INT NOT NULL,
  nombre_producto VARCHAR(150) NOT NULL,
+ tipo_producto VARCHAR(50) NOT NULL,
+ valor_compra NUMERIC(10, 2) NOT NULL,
  precio_venta NUMERIC(10, 2) NOT NULL,
  estado VARCHAR(20) DEFAULT 'Activo',
  CONSTRAINT fk_producto_proveedor FOREIGN KEY (id_proveedor) REFERENCES proveedores(id_proveedor)
@@ -111,6 +118,15 @@ CREATE TABLE facturas (
  fecha_emision TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
  CONSTRAINT fk_factura_pedido FOREIGN KEY (id_pedido) REFERENCES pedidos(id_pedido),
  CONSTRAINT fk_factura_medio_pago FOREIGN KEY (id_medio_pago) REFERENCES medios_pago(id_medio_pago)
+);
+
+CREATE TABLE audit_logs (
+ id_log SERIAL PRIMARY KEY,
+ usuario_id INT NOT NULL,
+ tipo_operacion VARCHAR(50) NOT NULL,
+ detalles TEXT,
+ fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ CONSTRAINT fk_audit_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id_usuario)
 );
 
 -- =====================================================

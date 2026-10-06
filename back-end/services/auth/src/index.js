@@ -42,34 +42,45 @@ app.post('/api/v1/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
     }
 
-    if (user.estado === 'Bloqueado' || user.estado === 'Inactivo') {
-      return res.status(403).json({ error: `Usuario en estado ${user.estado}. Contacte al administrador.` });
-    }
-
     const match = await bcrypt.compare(password, user.password_hash);
 
     if (!match) {
       const nuevosIntentos = user.intentos_fallidos + 1;
-      let nuevoEstado = user.estado;
 
       if (nuevosIntentos >= 3) {
-        nuevoEstado = 'Bloqueado';
+        await pool.query(
+          'UPDATE usuarios SET intentos_fallidos = $1, estado = $2 WHERE id_usuario = $3',
+          [nuevosIntentos, 'Bloqueado', user.id_usuario]
+        );
+        return res.status(403).json({
+          error: 'Cuenta bloqueada tras 3 intentos fallidos. Contacte a un Administrador.'
+        });
       }
 
       await pool.query(
-        'UPDATE usuarios SET intentos_fallidos = $1, estado = $2 WHERE id_usuario = $3',
-        [nuevosIntentos, nuevoEstado, user.id_usuario]
+        'UPDATE usuarios SET intentos_fallidos = $1 WHERE id_usuario = $2',
+        [nuevosIntentos, user.id_usuario]
       );
 
       return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
     }
 
+    if (user.estado === 'Bloqueado') {
+      return res.status(403).json({
+        error: 'Cuenta bloqueada tras 3 intentos fallidos. Contacte a un Administrador.'
+      });
+    }
+
+    if (user.estado === 'Inactivo') {
+      return res.status(403).json({ error: 'Usuario inactivo. Contacte a un Administrador.' });
+    }
+
     const token = jwt.sign(
-      { 
-        id_usuario: user.id_usuario, 
-        username: user.username, 
+      {
+        id_usuario: user.id_usuario,
+        username: user.username,
         rol: user.rol,
-        id_sede: user.id_sede 
+        id_sede: user.id_sede
       },
       process.env.JWT_SECRET || 'secret_fallback',
       { expiresIn: '8h' }
@@ -81,7 +92,7 @@ app.post('/api/v1/auth/login', async (req, res) => {
     );
 
     const { password_hash, token_sesion_activa, ...safeUser } = user;
-    
+
     res.json({
       message: 'Login exitoso',
       token,

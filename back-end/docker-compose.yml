@@ -14,7 +14,7 @@ services:
 
   auth:
     build: .
-    command: node --watch services/auth/src/index.js
+    command: npx nodemon --legacy-watch --watch services/auth/src --watch packages/common/src services/auth/src/index.js
     environment:
       PORT: 3001
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
@@ -27,7 +27,7 @@ services:
 
   sedes:
     build: .
-    command: node --watch services/sedes/src/index.js
+    command: npx nodemon --legacy-watch --watch services/sedes/src --watch packages/common/src services/sedes/src/index.js
     environment:
       PORT: 3002
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
@@ -40,7 +40,7 @@ services:
 
   gateway:
     build: .
-    command: node --watch gateway/src/index.js
+    command: npx nodemon --legacy-watch --watch gateway/src --watch packages/common/src gateway/src/index.js
     ports:
       - "3000:3000"
     environment:
