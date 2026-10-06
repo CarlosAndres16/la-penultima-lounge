@@ -11,6 +11,7 @@ export default function UserManagement() {
   
   // Form State
   const [formData, setFormData] = useState({
+    codigo_usuario: '',
     nombre_completo: '',
     username: '',
     password: '',
@@ -46,6 +47,7 @@ export default function UserManagement() {
     if (user) {
       setEditingUser(user);
       setFormData({
+        codigo_usuario: user.codigo_usuario,
         nombre_completo: user.nombre_completo,
         username: user.username,
         password: '', // En edición, la contraseña viene vacía para no sobrescribir a menos que se escriba algo
@@ -56,6 +58,7 @@ export default function UserManagement() {
     } else {
       setEditingUser(null);
       setFormData({
+        codigo_usuario: '',
         nombre_completo: '',
         username: '',
         password: '',
@@ -160,7 +163,7 @@ export default function UserManagement() {
         <tbody>
           {users.map(u => (
             <tr key={u.id_usuario}>
-              <td>USR-{u.id_usuario.toString().padStart(3, '0')}</td>
+              <td>{u.codigo_usuario}</td>
               <td>{u.nombre_completo}</td>
               <td>{u.username}</td>
               <td>{u.nombre_rol}</td>
@@ -190,12 +193,20 @@ export default function UserManagement() {
             {error && <div className="error-message">{error}</div>}
             
             <form onSubmit={handleSubmit}>
-              {editingUser && (
-                <div className="form-group">
-                  <label>Código</label>
-                  <input type="text" value={`USR-${editingUser.id_usuario.toString().padStart(3, '0')}`} readOnly disabled />
-                </div>
-              )}
+              <div className="form-group">
+                <label>Código</label>
+                {editingUser ? (
+                  <input type="text" value={editingUser.codigo_usuario} readOnly disabled />
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="Ej: USR-010"
+                    value={formData.codigo_usuario}
+                    onChange={e => setFormData({...formData, codigo_usuario: e.target.value})}
+                    required
+                  />
+                )}
+              </div>
 
               <div className="form-group">
                 <label>Nombre Completo</label>

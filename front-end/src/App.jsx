@@ -14,7 +14,11 @@ function App() {
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      const parsed = JSON.parse(savedUser);
+      setUser(parsed);
+      if (parsed.rol !== 'Administrador') {
+        setSelectedSede(parsed.id_sede);
+      }
     }
   }, []);
 
