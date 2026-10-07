@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import './UserManagement.css';
 import { t, ROLE_LABEL, STATUS_LABEL } from '../i18n';
 import Toast from './Toast';
+import LogoutButton from './LogoutButton';
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);

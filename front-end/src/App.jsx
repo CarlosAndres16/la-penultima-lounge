@@ -6,6 +6,7 @@ import Catalog from './components/Catalog';
 import Tables from './components/Tables';
 import Sedes from './components/Sedes';
 import { t, ROLE_LABEL } from './i18n';
+import { logout } from './utils/auth';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -34,7 +35,12 @@ function App() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await logout(); // invalidate session on server
+    } catch (e) {
+      console.error('Logout failed:', e);
+    }
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);

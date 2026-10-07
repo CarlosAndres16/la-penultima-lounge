@@ -34,11 +34,9 @@ router.post('/login', async (req, res) => {
     );
     const user = userResult.rows[0];
     if (!user) {
-      // Do not reveal existence
       return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
     }
 
-    // Check if account is blocked
     if (user.estado === 'Bloqueado') {
       return res
         .status(403)
@@ -47,7 +45,6 @@ router.post('/login', async (req, res) => {
 
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
     if (!passwordMatch) {
-      // Increment failed attempts
       const newFails = (user.intentos_fallidos || 0) + 1;
       const newState = newFails >= 3 ? 'Bloqueado' : user.estado;
       await pool.query(
@@ -61,11 +58,10 @@ router.post('/login', async (req, res) => {
       return res.status(status).json({ error: msg });
     }
 
-    // Successful login – reset attempts, generate token, enforce single session
     await pool.query(
       `UPDATE usuarios SET intentos_fallidos = 0, token_sesion_activa = $1 WHERE id_usuario = $2`,
       [null, user.id_usuario]
-    ); // clear any previous token first
+    ); 
 
     const tokenPayload = {
       sub: user.id_usuario,
@@ -73,13 +69,11 @@ router.post('/login', async (req, res) => {
       sede: user.id_sede,
     };
     const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '8h' });
-    // Store active token (single session)
     await pool.query(
       `UPDATE usuarios SET token_sesion_activa = $1 WHERE id_usuario = $2`,
       [token, user.id_usuario]
     );
 
-    // Audit log
     await pool.query(
       `INSERT INTO audit_logs (usuario_id, tipo_operacion, detalles) VALUES ($1, $2, $3)`,
       [user.id_usuario, 'LOGIN_SUCCESS', `User ${username} logged in`]
@@ -99,11 +93,27 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Example protected endpoint to test token validation
 router.get('/me', requireAuth((text, params) => pool.query(text, params)), async (req, res) => {
-  // req.user populated by requireAuth middleware
   res.json({ user: req.user });
 });
 
-export default router;
+router.post('/cancel-session', async (req, res) => {
+  try {
+    const { username } = req.body;
+    if (!username) {
+      return res.status(400).json({ error: 'username is required' });
+    }
+    const result = await pool.query('SELECT id_usuario FROM usuarios WHERE username = $1', [username]);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const userId = result.rows[0].id_usuario;
+    await pool.query('UPDATE usuarios SET token_sesion_activa = NULL WHERE id_usuario = $1', [userId]);
+    return res.json({ message: `Session cleared for user ${username}` });
+  } catch (error) {
+    console.error('Error in /cancel-session:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
+export default router;

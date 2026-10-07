@@ -1,8 +1,15 @@
 {
   "name": "la-penultima-lounge",
   "private": true,
-  "workspaces": ["gateway", "services/*", "packages/*"],
+  "workspaces": [
+    "gateway",
+    "services/*",
+    "packages/*"
+  ],
   "devDependencies": {
     "nodemon": "^3.1.9"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.6"
   }
 }

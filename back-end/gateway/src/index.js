@@ -5,10 +5,7 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors({
-  origin: 'http://localhost:5173',
-  credentials: true
-}));
+app.use(cors());
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'gateway' });
