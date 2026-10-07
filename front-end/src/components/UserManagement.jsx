@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import './UserManagement.css';
+import { t, ROLE_LABEL, STATUS_LABEL } from '../i18n';
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -15,7 +16,7 @@ export default function UserManagement() {
     nombre_completo: '',
     username: '',
     password: '',
-    id_rol: '1', // Default a Mesero o Cajero
+    id_rol: '1', // Default: Waiter
     id_sede: '1',
     estado: 'Activo'
   });
@@ -32,7 +33,7 @@ export default function UserManagement() {
       const res = await fetch('http://localhost:3000/api/v1/users', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!res.ok) throw new Error('Error al cargar usuarios');
+      if (!res.ok) throw new Error('Failed to load users');
       const data = await res.json();
       setUsers(data);
     } catch (err) {
@@ -50,7 +51,7 @@ export default function UserManagement() {
         codigo_usuario: user.codigo_usuario,
         nombre_completo: user.nombre_completo,
         username: user.username,
-        password: '', // En edición, la contraseña viene vacía para no sobrescribir a menos que se escriba algo
+        password: '', // When editing, leave empty so the password is not overwritten unless something is typed
         id_rol: user.id_rol,
         id_sede: user.id_sede || '',
         estado: user.estado
@@ -83,7 +84,7 @@ export default function UserManagement() {
     const method = isEdit ? 'PUT' : 'POST';
 
     const payload = { ...formData };
-    // Si editamos y la clave está vacía, no la enviamos
+    // If editing and the password is empty, do not send it
     if (isEdit && !payload.password) {
       delete payload.password;
     }
@@ -100,7 +101,7 @@ export default function UserManagement() {
 
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error || 'Error al guardar');
+        throw new Error(errData.error || 'Failed to save');
       }
 
       setShowModal(false);
@@ -113,7 +114,7 @@ export default function UserManagement() {
   const handleToggleStatus = async (id, currentStatus) => {
     const newStatus = currentStatus === 'Activo' ? 'Inactivo' : 'Activo';
     if (currentStatus === 'Activo') {
-      if (!window.confirm('¿Está seguro de inactivar este usuario? Perderá su sesión inmediatamente.')) {
+      if (!window.confirm('Are you sure you want to deactivate this user? They will lose their session immediately.')) {
         return;
       }
     }
@@ -139,25 +140,25 @@ export default function UserManagement() {
     }
   };
 
-  if (loading) return <div>Cargando usuarios...</div>;
+  if (loading) return <div>Loading users...</div>;
 
   return (
     <div className="users-container">
       <div className="users-header">
-        <h2>Gestión de Usuarios</h2>
-        <button className="btn-primary" onClick={() => handleOpenModal()}>+ Nuevo Usuario</button>
+        <h2>User Management</h2>
+        <button className="btn-primary" onClick={() => handleOpenModal()}>+ New User</button>
       </div>
 
       <table className="users-table">
         <thead>
           <tr>
-            <th>Código</th>
-            <th>Nombre Completo</th>
-            <th>Usuario</th>
-            <th>Rol</th>
-            <th>Sede Asignada</th>
-            <th>Estado</th>
-            <th>Acciones</th>
+            <th>Code</th>
+            <th>Full Name</th>
+            <th>Username</th>
+            <th>Role</th>
+            <th>Assigned Branch</th>
+            <th>Status</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -166,17 +167,17 @@ export default function UserManagement() {
               <td>{u.codigo_usuario}</td>
               <td>{u.nombre_completo}</td>
               <td>{u.username}</td>
-              <td>{u.nombre_rol}</td>
+              <td>{t(ROLE_LABEL, u.nombre_rol)}</td>
               <td>{u.nombre_sede || 'N/A'}</td>
               <td>
-                <span className={`status-badge ${u.estado.toLowerCase()}`}>{u.estado}</span>
+                <span className={`status-badge ${u.estado.toLowerCase()}`}>{t(STATUS_LABEL, u.estado)}</span>
               </td>
               <td className="actions">
-                <button className="btn-icon" onClick={() => handleOpenModal(u)}>✏️</button>
+                <button className="btn-icon" onClick={() => handleOpenModal(u)} title="Edit">✏️</button>
                 <button 
                   className="btn-icon" 
                   onClick={() => handleToggleStatus(u.id_usuario, u.estado)}
-                  title={u.estado === 'Activo' ? 'Inactivar' : 'Activar'}
+                  title={u.estado === 'Activo' ? 'Deactivate' : 'Activate'}
                 >
                   {u.estado === 'Activo' ? '🚫' : '✅'}
                 </button>
@@ -189,18 +190,18 @@ export default function UserManagement() {
       {showModal && (
         <div className="modal-overlay">
           <div className="modal">
-            <h3>{editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}</h3>
+            <h3>{editingUser ? 'Edit User' : 'New User'}</h3>
             {error && <div className="error-message">{error}</div>}
             
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label>Código</label>
+                <label>Code</label>
                 {editingUser ? (
                   <input type="text" value={editingUser.codigo_usuario} readOnly disabled />
                 ) : (
                   <input
                     type="text"
-                    placeholder="Ej: USR-010"
+                    placeholder="e.g. USR-010"
                     value={formData.codigo_usuario}
                     onChange={e => setFormData({...formData, codigo_usuario: e.target.value})}
                     required
@@ -209,7 +210,7 @@ export default function UserManagement() {
               </div>
 
               <div className="form-group">
-                <label>Nombre Completo</label>
+                <label>Full Name</label>
                 <input 
                   type="text" 
                   value={formData.nombre_completo} 
@@ -219,7 +220,7 @@ export default function UserManagement() {
               </div>
 
               <div className="form-group">
-                <label>Usuario</label>
+                <label>Username</label>
                 <input 
                   type="text" 
                   value={formData.username} 
@@ -231,44 +232,44 @@ export default function UserManagement() {
               </div>
 
               <div className="form-group">
-                <label>Contraseña {editingUser && '(Opcional: Dejar en blanco para no cambiar)'}</label>
+                <label>Password {editingUser && '(Optional: leave blank to keep current)'}</label>
                 <input 
                   type="password" 
                   value={formData.password} 
                   onChange={e => setFormData({...formData, password: e.target.value})} 
                   required={!editingUser} 
-                  placeholder="Min 8 chars, 1 letra, 1 número"
+                  placeholder="Min 8 chars, 1 letter, 1 number"
                 />
               </div>
 
               <div className="form-group">
-                <label>Rol</label>
+                <label>Role</label>
                 <select 
                   value={formData.id_rol} 
                   onChange={e => setFormData({...formData, id_rol: e.target.value})}
                 >
-                  <option value="1">Mesero</option>
-                  <option value="2">Cajero</option>
-                  <option value="3">Administrador</option>
+                  <option value="1">{ROLE_LABEL.Mesero}</option>
+                  <option value="2">{ROLE_LABEL.Cajero}</option>
+                  <option value="3">{ROLE_LABEL.Administrador}</option>
                 </select>
               </div>
 
               <div className="form-group">
-                <label>Sede Asignada</label>
-                {/* Lo ideal sería traer sedes dinámicamente, por ahora mock: */}
+                <label>Assigned Branch</label>
+                {/* Ideally branches would be fetched dynamically; mock for now: */}
                 <select 
                   value={formData.id_sede} 
                   onChange={e => setFormData({...formData, id_sede: e.target.value})}
                 >
-                  <option value="">Ninguna</option>
+                  <option value="">None</option>
                   <option value="1">La Penúltima — Zona Rosa</option>
                   <option value="2">La Penúltima — Chapinero</option>
                 </select>
               </div>
 
               <div className="modal-actions">
-                <button type="button" className="btn-secondary" onClick={() => setShowModal(false)}>Cancelar</button>
-                <button type="submit" className="btn-primary">Guardar</button>
+                <button type="button" className="btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
+                <button type="submit" className="btn-primary">Save</button>
               </div>
             </form>
           </div>

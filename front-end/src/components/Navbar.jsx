@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import './Navbar.css';
+import { t, ROLE_LABEL } from '../i18n';
 
 export default function Navbar({ user, onLogout, selectedSede, setSelectedSede }) {
   const [sedes, setSedes] = useState([]);
@@ -39,14 +40,14 @@ export default function Navbar({ user, onLogout, selectedSede, setSelectedSede }
       <div className="navbar-center">
         {user.rol === 'Administrador' ? (
           <div className="branch-selector">
-            <label htmlFor="sede-select">Sede:</label>
+            <label htmlFor="sede-select">Branch:</label>
             <select 
               id="sede-select" 
               value={selectedSede} 
               onChange={handleSedeChange}
               className="dropdown"
             >
-              <option value="ALL">Todas las sedes</option>
+              <option value="ALL">All branches</option>
               {sedes.map((sede) => (
                 <option key={sede.id_sede} value={sede.id_sede}>
                   {sede.nombre_sede}
@@ -56,16 +57,16 @@ export default function Navbar({ user, onLogout, selectedSede, setSelectedSede }
           </div>
         ) : (
           <div className="branch-fixed">
-            <span className="badge">Sede: {user.sede_nombre || 'Asignada'}</span>
+            <span className="badge">Branch: {user.sede_nombre || 'Assigned'}</span>
           </div>
         )}
       </div>
 
       <div className="navbar-right">
         <span className="user-info">
-          {user.nombre_completo} <small>({user.rol})</small>
+          {user.nombre_completo} <small>({t(ROLE_LABEL, user.rol)})</small>
         </span>
-        <button onClick={onLogout} className="logout-btn">Salir</button>
+        <button onClick={onLogout} className="logout-btn">Log out</button>
       </div>
     </nav>
   );

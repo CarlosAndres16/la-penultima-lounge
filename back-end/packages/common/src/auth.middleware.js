@@ -4,7 +4,7 @@ export const requireAuth = (queryFn) => async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Token no proporcionado' });
+      return res.status(401).json({ error: 'Token not provided' });
     }
 
     const token = authHeader.split(' ')[1];
@@ -15,16 +15,16 @@ export const requireAuth = (queryFn) => async (req, res, next) => {
     const user = result.rows[0];
 
     if (!user) {
-      return res.status(401).json({ error: 'Usuario no encontrado' });
+      return res.status(401).json({ error: 'User not found' });
     }
 
     if (user.estado !== 'Activo') {
-      return res.status(403).json({ error: 'Usuario inactivo o bloqueado' });
+      return res.status(403).json({ error: 'User is inactive or blocked' });
     }
 
     if (user.token_sesion_activa !== token) {
       return res.status(401).json({ 
-        error: 'Su sesión ha finalizado porque se inició sesión en otro dispositivo',
+        error: 'Your session has ended because you signed in on another device',
         code: 'SESSION_SUPERSEDED'
       });
     }
@@ -32,20 +32,20 @@ export const requireAuth = (queryFn) => async (req, res, next) => {
     req.user = decoded;
     next();
   } catch (error) {
-    console.error('Error de autenticación:', error.message);
+    console.error('Authentication error:', error.message);
     if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'El token ha expirado' });
+      return res.status(401).json({ error: 'Token has expired' });
     }
-    return res.status(401).json({ error: 'Token inválido' });
+    return res.status(401).json({ error: 'Invalid token' });
   }
 };
 
 export const requireRole = (allowedRoles) => (req, res, next) => {
   if (!req.user) {
-    return res.status(401).json({ error: 'No autenticado' });
+    return res.status(401).json({ error: 'Not authenticated' });
   }
   if (!allowedRoles.includes(req.user.rol)) {
-    return res.status(403).json({ error: 'No tiene permisos para realizar esta acción' });
+    return res.status(403).json({ error: 'You do not have permission to perform this action' });
   }
   next();
 };

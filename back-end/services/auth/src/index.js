@@ -24,7 +24,7 @@ app.post('/api/v1/auth/login', async (req, res) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
-    return res.status(400).json({ error: 'Usuario y contraseña requeridos' });
+    return res.status(400).json({ error: 'Username and password are required' });
   }
 
   try {
@@ -39,7 +39,7 @@ app.post('/api/v1/auth/login', async (req, res) => {
     const user = result.rows[0];
 
     if (!user) {
-      return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+      return res.status(401).json({ error: 'Incorrect username or password' });
     }
 
     const match = await bcrypt.compare(password, user.password_hash);
@@ -53,7 +53,7 @@ app.post('/api/v1/auth/login', async (req, res) => {
           [nuevosIntentos, 'Bloqueado', user.id_usuario]
         );
         return res.status(403).json({
-          error: 'Cuenta bloqueada tras 3 intentos fallidos. Contacte a un Administrador.'
+          error: 'Account blocked after 3 failed attempts. Please contact an Administrator.'
         });
       }
 
@@ -62,17 +62,17 @@ app.post('/api/v1/auth/login', async (req, res) => {
         [nuevosIntentos, user.id_usuario]
       );
 
-      return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+      return res.status(401).json({ error: 'Incorrect username or password' });
     }
 
     if (user.estado === 'Bloqueado') {
       return res.status(403).json({
-        error: 'Cuenta bloqueada tras 3 intentos fallidos. Contacte a un Administrador.'
+        error: 'Account blocked after 3 failed attempts. Please contact an Administrator.'
       });
     }
 
     if (user.estado === 'Inactivo') {
-      return res.status(403).json({ error: 'Usuario inactivo. Contacte a un Administrador.' });
+      return res.status(403).json({ error: 'Inactive user. Please contact an Administrator.' });
     }
 
     const token = jwt.sign(
@@ -94,15 +94,15 @@ app.post('/api/v1/auth/login', async (req, res) => {
     const { password_hash, token_sesion_activa, ...safeUser } = user;
 
     res.json({
-      message: 'Login exitoso',
+      message: 'Login successful',
       token,
       user: safeUser
     });
 
   } catch (error) {
-    console.error('Error en /login:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    console.error('Error in /login:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-app.listen(PORT, () => console.log(`auth escuchando en el puerto ${PORT}`));
+app.listen(PORT, () => console.log(`auth listening on port ${PORT}`));

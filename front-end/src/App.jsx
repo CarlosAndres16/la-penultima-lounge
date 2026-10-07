@@ -3,8 +3,8 @@ import Login from './components/Login';
 import Navbar from './components/Navbar';
 import UserManagement from './components/UserManagement';
 import Catalog from './components/Catalog';
-
-// ... (skip lines just by editing the right part)
+import Tables from './components/Tables';
+import { t, ROLE_LABEL } from './i18n';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -39,6 +39,15 @@ function App() {
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
+  const tabStyle = (tab) => ({
+    padding: '0.5rem 1rem',
+    background: activeTab === tab ? '#d4af37' : '#2a2a2a',
+    color: activeTab === tab ? '#000' : '#fff',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer'
+  });
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#121212', color: '#fff' }}>
       <Navbar 
@@ -50,35 +59,30 @@ function App() {
       
       <main style={{ padding: '2rem' }}>
         <div style={{ marginBottom: '2rem', display: 'flex', gap: '1rem' }}>
-          <button 
-            onClick={() => setActiveTab('dashboard')}
-            style={{ padding: '0.5rem 1rem', background: activeTab === 'dashboard' ? '#d4af37' : '#2a2a2a', color: activeTab === 'dashboard' ? '#000' : '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-          >
+          <button onClick={() => setActiveTab('dashboard')} style={tabStyle('dashboard')}>
             Dashboard
           </button>
-          
-          <button 
-            onClick={() => setActiveTab('catalog')}
-            style={{ padding: '0.5rem 1rem', background: activeTab === 'catalog' ? '#d4af37' : '#2a2a2a', color: activeTab === 'catalog' ? '#000' : '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-          >
-            Catálogo
+
+          <button onClick={() => setActiveTab('catalog')} style={tabStyle('catalog')}>
+            Catalog
+          </button>
+
+          <button onClick={() => setActiveTab('tables')} style={tabStyle('tables')}>
+            Tables
           </button>
 
           {user.rol === 'Administrador' && (
-            <button 
-              onClick={() => setActiveTab('users')}
-              style={{ padding: '0.5rem 1rem', background: activeTab === 'users' ? '#d4af37' : '#2a2a2a', color: activeTab === 'users' ? '#000' : '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-            >
-              Usuarios
+            <button onClick={() => setActiveTab('users')} style={tabStyle('users')}>
+              Users
             </button>
           )}
         </div>
 
         {activeTab === 'dashboard' && (
           <div>
-            <h2>Panel Principal</h2>
-            <p>Bienvenido al sistema multisede, {user.nombre_completo}.</p>
-            <p>Tu rol es: <strong>{user.rol}</strong></p>
+            <h2>Main Dashboard</h2>
+            <p>Welcome to the multi-branch system, {user.nombre_completo}.</p>
+            <p>Your role is: <strong>{t(ROLE_LABEL, user.rol)}</strong></p>
           </div>
         )}
 
@@ -88,6 +92,10 @@ function App() {
         
         {activeTab === 'catalog' && (
           <Catalog userRol={user.rol} selectedSede={selectedSede} />
+        )}
+
+        {activeTab === 'tables' && (
+          <Tables userRol={user.rol} selectedSede={selectedSede} />
         )}
       </main>
     </div>

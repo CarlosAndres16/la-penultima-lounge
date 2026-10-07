@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import './Catalog.css';
+import { t, STATUS_LABEL } from '../i18n';
 
 const EMPTY_FORM = {
   codigo_producto: '',
@@ -40,7 +41,7 @@ export default function Catalog({ userRol, selectedSede }) {
       const res = await fetch(`http://localhost:3000/api/v1/productos?${query}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!res.ok) throw new Error('Error al cargar catálogo');
+      if (!res.ok) throw new Error('Failed to load catalog');
       const data = await res.json();
       setProductos(data);
     } catch (err) {
@@ -86,7 +87,7 @@ export default function Catalog({ userRol, selectedSede }) {
     setError('');
 
     if (!proveedor) {
-      setError('No hay un proveedor registrado. Debe existir uno antes de crear productos.');
+      setError('No supplier is registered. One must exist before creating products.');
       return;
     }
 
@@ -123,14 +124,14 @@ export default function Catalog({ userRol, selectedSede }) {
 
       if (!res.ok) {
         const errData = await res.json();
-        // Advertencia: precio de venta <= valor de compra
+        // Warning: sale price <= cost price
         if (res.status === 409 && errData.warning) {
           if (window.confirm(errData.error)) {
             return saveProduct(true);
           }
           return;
         }
-        throw new Error(errData.error || 'Error al guardar');
+        throw new Error(errData.error || 'Failed to save');
       }
 
       setShowModal(false);
@@ -149,7 +150,7 @@ export default function Catalog({ userRol, selectedSede }) {
     const newStatus = currentStatus === 'Activo' ? 'Inactivo' : 'Activo';
 
     if (currentStatus === 'Activo') {
-      if (!window.confirm('¿Está seguro de inactivar este producto?')) {
+      if (!window.confirm('Are you sure you want to deactivate this product?')) {
         return;
       }
     }
@@ -175,16 +176,16 @@ export default function Catalog({ userRol, selectedSede }) {
   return (
     <div className="catalog-container">
       <div className="catalog-header">
-        <h2>Catálogo de Productos {selectedSede === 'ALL' ? '(Global)' : '(Sede Específica)'}</h2>
+        <h2>Product Catalog {selectedSede === 'ALL' ? '(Global)' : '(Specific Branch)'}</h2>
         {userRol === 'Administrador' && (
-          <button className="btn-primary" onClick={() => handleOpenModal()}>+ Nuevo Producto</button>
+          <button className="btn-primary" onClick={() => handleOpenModal()}>+ New Product</button>
         )}
       </div>
 
       <div className="catalog-filters">
         <input 
           type="text" 
-          placeholder="Buscar por nombre o código..." 
+          placeholder="Search by name or code..." 
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="search-input"
@@ -192,18 +193,18 @@ export default function Catalog({ userRol, selectedSede }) {
       </div>
 
       {loading ? (
-        <p>Cargando catálogo...</p>
+        <p>Loading catalog...</p>
       ) : (
         <table className="catalog-table">
           <thead>
             <tr>
-              <th>Código</th>
-              <th>Nombre</th>
-              <th>Proveedor</th>
-              <th>Precio Venta</th>
-              <th>Existencias</th>
-              <th>Estado</th>
-              {userRol === 'Administrador' && <th>Acciones</th>}
+              <th>Code</th>
+              <th>Name</th>
+              <th>Supplier</th>
+              <th>Sale Price</th>
+              <th>Stock</th>
+              <th>Status</th>
+              {userRol === 'Administrador' && <th>Actions</th>}
             </tr>
           </thead>
           <tbody>
@@ -211,7 +212,7 @@ export default function Catalog({ userRol, selectedSede }) {
               <tr key={p.id_producto} className={p.estado === 'Inactivo' ? 'row-inactive' : ''}>
                 <td>{p.codigo_producto}</td>
                 <td>{p.nombre_producto}</td>
-                <td>{p.nombre_proveedor || 'Sin proveedor'}</td>
+                <td>{p.nombre_proveedor || 'No supplier'}</td>
                 <td>${Number(p.precio_venta).toLocaleString()}</td>
                 <td>
                   <span className={`stock-badge ${Number(p.stock_total) > 0 ? 'stock-ok' : 'stock-zero'}`}>
@@ -219,15 +220,15 @@ export default function Catalog({ userRol, selectedSede }) {
                   </span>
                 </td>
                 <td>
-                  <span className={`status-badge ${p.estado.toLowerCase()}`}>{p.estado}</span>
+                  <span className={`status-badge ${p.estado.toLowerCase()}`}>{t(STATUS_LABEL, p.estado)}</span>
                 </td>
                 {userRol === 'Administrador' && (
                   <td className="actions">
-                    <button className="btn-icon" onClick={() => handleOpenModal(p)} title="Editar">✏️</button>
+                    <button className="btn-icon" onClick={() => handleOpenModal(p)} title="Edit">✏️</button>
                     <button 
                       className="btn-icon" 
                       onClick={() => handleToggleStatus(p.id_producto, p.estado)}
-                      title={p.estado === 'Activo' ? 'Inactivar' : 'Activar'}
+                      title={p.estado === 'Activo' ? 'Deactivate' : 'Activate'}
                     >
                       {p.estado === 'Activo' ? '🚫' : '✅'}
                     </button>
@@ -238,7 +239,7 @@ export default function Catalog({ userRol, selectedSede }) {
             {productos.length === 0 && (
               <tr>
                 <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>
-                  No se encontraron productos
+                  No products found
                 </td>
               </tr>
             )}
@@ -249,18 +250,18 @@ export default function Catalog({ userRol, selectedSede }) {
       {showModal && (
         <div className="modal-overlay">
           <div className="modal">
-            <h3>{editingProduct ? 'Editar Producto' : 'Nuevo Producto'}</h3>
+            <h3>{editingProduct ? 'Edit Product' : 'New Product'}</h3>
             {error && <div className="error-message">{error}</div>}
 
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label>Código</label>
+                <label>Code</label>
                 {editingProduct ? (
                   <input type="text" value={editingProduct.codigo_producto} readOnly disabled />
                 ) : (
                   <input
                     type="text"
-                    placeholder="Ej: PRD-300"
+                    placeholder="e.g. PRD-300"
                     value={formData.codigo_producto}
                     onChange={e => setFormData({...formData, codigo_producto: e.target.value})}
                     required
@@ -269,7 +270,7 @@ export default function Catalog({ userRol, selectedSede }) {
               </div>
 
               <div className="form-group">
-                <label>Nombre del Producto</label>
+                <label>Product Name</label>
                 <input
                   type="text"
                   value={formData.nombre_producto}
@@ -279,37 +280,37 @@ export default function Catalog({ userRol, selectedSede }) {
               </div>
 
               <div className="form-group">
-                <label>Tipo de Producto</label>
+                <label>Product Type</label>
                 <input
                   type="text"
                   list="tipos-producto"
-                  placeholder="Ej: Cóctel, Cerveza..."
+                  placeholder="e.g. Cocktail, Beer..."
                   value={formData.tipo_producto}
                   onChange={e => setFormData({...formData, tipo_producto: e.target.value})}
                   required
                 />
                 <datalist id="tipos-producto">
-                  <option value="Cóctel" />
-                  <option value="Cóctel de autor" />
-                  <option value="Cerveza" />
-                  <option value="Licor" />
-                  <option value="Comida" />
-                  <option value="Bebida sin alcohol" />
+                  <option value="Cocktail" />
+                  <option value="Signature cocktail" />
+                  <option value="Beer" />
+                  <option value="Liquor" />
+                  <option value="Food" />
+                  <option value="Non-alcoholic" />
                 </datalist>
               </div>
 
               <div className="form-group">
-                <label>Proveedor</label>
+                <label>Supplier</label>
                 <input
                   type="text"
-                  value={proveedor ? proveedor.nombre_proveedor : 'Sin proveedor registrado'}
+                  value={proveedor ? proveedor.nombre_proveedor : 'No supplier registered'}
                   readOnly
                   disabled
                 />
               </div>
 
               <div className="form-group">
-                <label>Valor de Compra</label>
+                <label>Cost Price</label>
                 <input
                   type="number"
                   min="0"
@@ -321,7 +322,7 @@ export default function Catalog({ userRol, selectedSede }) {
               </div>
 
               <div className="form-group">
-                <label>Valor de Venta</label>
+                <label>Sale Price</label>
                 <input
                   type="number"
                   min="0"
@@ -333,8 +334,8 @@ export default function Catalog({ userRol, selectedSede }) {
               </div>
 
               <div className="modal-actions">
-                <button type="button" className="btn-secondary" onClick={() => setShowModal(false)}>Cancelar</button>
-                <button type="submit" className="btn-primary">Guardar</button>
+                <button type="button" className="btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
+                <button type="submit" className="btn-primary">Save</button>
               </div>
             </form>
           </div>

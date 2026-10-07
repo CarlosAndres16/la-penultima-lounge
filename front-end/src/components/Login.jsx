@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import './Login.css';
+import { t, ROLE_LABEL } from '../i18n';
 
 export default function Login({ onLoginSuccess }) {
   const [username, setUsername] = useState('');
@@ -21,7 +22,7 @@ export default function Login({ onLoginSuccess }) {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Credenciales inválidas');
+        throw new Error(errorData.error || 'Invalid credentials');
       }
 
       const data = await response.json();
@@ -50,19 +51,19 @@ export default function Login({ onLoginSuccess }) {
 
         <form onSubmit={handleSubmit} className="login-form">
           <div className="input-group">
-            <label htmlFor="username">Usuario</label>
+            <label htmlFor="username">Username</label>
             <input
               type="text"
               id="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Ej. lcruz"
+              placeholder="e.g. lcruz"
               required
             />
           </div>
 
           <div className="input-group">
-            <label htmlFor="password">Contraseña</label>
+            <label htmlFor="password">Password</label>
             <input
               type="password"
               id="password"
@@ -74,7 +75,7 @@ export default function Login({ onLoginSuccess }) {
           </div>
 
           <button type="submit" className="login-button">
-            Ingresar
+            Sign in
           </button>
         </form>
       </div>

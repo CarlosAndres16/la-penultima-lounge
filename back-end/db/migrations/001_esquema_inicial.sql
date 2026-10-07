@@ -61,8 +61,9 @@ CREATE TABLE mesas (
  id_mesa SERIAL PRIMARY KEY,
  id_sede INT NOT NULL,
  numero_mesa VARCHAR(20) NOT NULL,
- estado_actual VARCHAR(20) DEFAULT 'Disponible',
- CONSTRAINT fk_mesa_sede FOREIGN KEY (id_sede) REFERENCES sedes(id_sede)
+ estado_actual VARCHAR(20) DEFAULT 'Libre',
+ CONSTRAINT fk_mesa_sede FOREIGN KEY (id_sede) REFERENCES sedes(id_sede),
+ CONSTRAINT unique_sede_mesa UNIQUE (id_sede, numero_mesa)
 );
 
 CREATE TABLE inventario_sede (

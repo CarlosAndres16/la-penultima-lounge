@@ -15,7 +15,7 @@ const isValidPassword = (password) => {
   return password.length >= 8 && /[a-zA-Z]/.test(password) && /[0-9]/.test(password);
 };
 
-// GET /api/v1/users - Listar usuarios
+// GET /api/v1/users - List users
 router.get('/', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -28,21 +28,21 @@ router.get('/', async (req, res) => {
     `);
     res.json(result.rows);
   } catch (error) {
-    console.error('Error listando usuarios:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    console.error('Error listing users:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// POST /api/v1/users - Crear usuario
+// POST /api/v1/users - Create user
 router.post('/', async (req, res) => {
   const { codigo_usuario, nombre_completo, username, password, id_rol, id_sede, estado } = req.body;
 
   if (!codigo_usuario || !nombre_completo || !username || !password || !id_rol || !id_sede) {
-    return res.status(400).json({ error: 'Faltan campos obligatorios' });
+    return res.status(400).json({ error: 'Required fields are missing' });
   }
 
   if (!isValidPassword(password)) {
-    return res.status(400).json({ error: 'La contraseña debe tener mínimo 8 caracteres, al menos 1 letra y 1 número' });
+    return res.status(400).json({ error: 'Password must be at least 8 characters long and include at least 1 letter and 1 number' });
   }
 
   try {
@@ -55,29 +55,29 @@ router.post('/', async (req, res) => {
 
     await pool.query(
       `INSERT INTO audit_logs (usuario_id, tipo_operacion, detalles) VALUES ($1, $2, $3)`,
-      [req.user.id_usuario, 'CREATE_USER', `Creado usuario ${username} (${codigo_usuario})`]
+      [req.user.id_usuario, 'CREATE_USER', `Created user ${username} (${codigo_usuario})`]
     );
 
-    res.status(201).json({ message: 'Usuario creado', user: result.rows[0] });
+    res.status(201).json({ message: 'User created', user: result.rows[0] });
   } catch (error) {
     if (error.code === '23505') {
       if (error.constraint === 'usuarios_codigo_usuario_key') {
-        return res.status(400).json({ error: 'El código de usuario ya existe' });
+        return res.status(400).json({ error: 'User code already exists' });
       }
-      return res.status(400).json({ error: 'El nombre de usuario ya se encuentra en uso' });
+      return res.status(400).json({ error: 'Username is already in use' });
     }
-    console.error('Error creando usuario:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    console.error('Error creating user:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// PUT /api/v1/users/:id - Editar usuario
+// PUT /api/v1/users/:id - Edit user
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
   const { nombre_completo, id_rol, id_sede, estado, password } = req.body;
 
   if (!nombre_completo || !id_rol || !id_sede || !estado) {
-    return res.status(400).json({ error: 'Nombre, sede, perfil y estado son obligatorios' });
+    return res.status(400).json({ error: 'Name, branch, role and status are required' });
   }
 
   try {
@@ -88,7 +88,7 @@ router.put('/:id', async (req, res) => {
     const actual = actualRes.rows[0];
 
     if (!actual) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
+      return res.status(404).json({ error: 'User not found' });
     }
 
     let query = 'UPDATE usuarios SET nombre_completo = $1, id_rol = $2, id_sede = $3, estado = $4';
@@ -97,7 +97,7 @@ router.put('/:id', async (req, res) => {
 
     if (password) {
       if (!isValidPassword(password)) {
-        return res.status(400).json({ error: 'La contraseña no cumple con las políticas' });
+        return res.status(400).json({ error: 'Password does not meet the security policy' });
       }
       const hash = await bcrypt.hash(password, 10);
       query += `, password_hash = $${queryIndex}`;
@@ -120,25 +120,25 @@ router.put('/:id', async (req, res) => {
     await pool.query(query, params);
 
     const cambios = [];
-    if (sedeChanged) cambios.push(`sede: ${actual.id_sede} -> ${id_sede}`);
-    if (rolChanged) cambios.push(`perfil: ${actual.id_rol} -> ${id_rol}`);
-    if (estadoChanged) cambios.push(`estado: ${actual.estado} -> ${estado}`);
+    if (sedeChanged) cambios.push(`branch: ${actual.id_sede} -> ${id_sede}`);
+    if (rolChanged) cambios.push(`role: ${actual.id_rol} -> ${id_rol}`);
+    if (estadoChanged) cambios.push(`status: ${actual.estado} -> ${estado}`);
 
     if (cambios.length > 0) {
       await pool.query(
         `INSERT INTO audit_logs (usuario_id, tipo_operacion, detalles) VALUES ($1, $2, $3)`,
-        [req.user.id_usuario, 'UPDATE_USER', `Usuario ${id}: ${cambios.join(', ')}`]
+        [req.user.id_usuario, 'UPDATE_USER', `User ${id}: ${cambios.join(', ')}`]
       );
     }
 
-    res.json({ message: 'Usuario actualizado correctamente', sesionCerrada: debeCerrarSesion });
+    res.json({ message: 'User updated successfully', sesionCerrada: debeCerrarSesion });
   } catch (error) {
-    console.error('Error editando usuario:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    console.error('Error editing user:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// PATCH /api/v1/users/:id/status - Cambiar estado
+// PATCH /api/v1/users/:id/status - Change status
 router.patch('/:id/status', async (req, res) => {
   const { id } = req.params;
   const { estado } = req.body;
@@ -150,7 +150,7 @@ router.patch('/:id/status', async (req, res) => {
          WHERE r.nombre_rol = 'Administrador' AND u.estado = 'Activo'`
       );
       if (parseInt(adminCount.rows[0].count) <= 1) {
-        return res.status(400).json({ error: 'No puedes inactivarte porque eres el único Administrador activo' });
+        return res.status(400).json({ error: 'You cannot deactivate yourself because you are the only active Administrator' });
       }
     }
 
@@ -167,13 +167,13 @@ router.patch('/:id/status', async (req, res) => {
 
     await pool.query(
       `INSERT INTO audit_logs (usuario_id, tipo_operacion, detalles) VALUES ($1, $2, $3)`,
-      [req.user.id_usuario, 'CHANGE_USER_STATUS', `Usuario ${id} marcado como ${estado}`]
+      [req.user.id_usuario, 'CHANGE_USER_STATUS', `User ${id} marked as ${estado}`]
     );
 
-    res.json({ message: `Usuario marcado como ${estado}` });
+    res.json({ message: `User marked as ${estado}` });
   } catch (error) {
-    console.error('Error cambiando estado:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    console.error('Error changing status:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

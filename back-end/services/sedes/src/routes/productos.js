@@ -17,7 +17,7 @@ router.get('/', requireSameSede, async (req, res) => {
     let query = `
       SELECT p.id_producto, p.codigo_producto, p.nombre_producto, p.tipo_producto,
              p.valor_compra, p.precio_venta, p.estado,
-             COALESCE(pr.nombre_proveedor, 'Sin proveedor') AS nombre_proveedor,
+             COALESCE(pr.nombre_proveedor, 'No supplier') AS nombre_proveedor,
              COALESCE(SUM(i.cantidad_disponible), 0)::INT AS stock_total
       FROM productos p
       LEFT JOIN proveedores pr ON p.id_proveedor = pr.id_proveedor
@@ -52,8 +52,8 @@ router.get('/', requireSameSede, async (req, res) => {
     const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (error) {
-    console.error('Error listando productos:', error);
-    res.status(500).json({ error: 'Error interno' });
+    console.error('Error listing products:', error);
+    res.status(500).json({ error: 'Internal error' });
   }
 });
 
@@ -61,13 +61,13 @@ router.post('/', adminOnly, async (req, res) => {
   const { codigo_producto, id_proveedor, nombre_producto, tipo_producto, valor_compra, precio_venta, confirmar } = req.body;
 
   if (!codigo_producto || !id_proveedor || !nombre_producto || !tipo_producto || valor_compra == null || precio_venta == null) {
-    return res.status(400).json({ error: 'Este campo es obligatorio' });
+    return res.status(400).json({ error: 'This field is required' });
   }
 
   if (Number(precio_venta) <= Number(valor_compra) && !confirmar) {
     return res.status(409).json({
       warning: true,
-      error: 'El valor de venta es menor o igual al valor de compra. ¿Desea continuar?'
+      error: 'The sale price is less than or equal to the cost price. Do you want to continue?'
     });
   }
 
@@ -91,7 +91,7 @@ router.post('/', adminOnly, async (req, res) => {
 
     await client.query(
       `INSERT INTO audit_logs (usuario_id, tipo_operacion, detalles) VALUES ($1, $2, $3)`,
-      [req.user.id_usuario, 'CREATE_PRODUCT', `Creado producto ${nombre_producto} (${codigo_producto})`]
+      [req.user.id_usuario, 'CREATE_PRODUCT', `Created product ${nombre_producto} (${codigo_producto})`]
     );
 
     await client.query('COMMIT');
@@ -99,10 +99,10 @@ router.post('/', adminOnly, async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     if (error.code === '23505') {
-      return res.status(400).json({ error: 'El código de producto ya existe' });
+      return res.status(400).json({ error: 'Product code already exists' });
     }
-    console.error('Error creando producto:', error);
-    res.status(500).json({ error: 'Error interno' });
+    console.error('Error creating product:', error);
+    res.status(500).json({ error: 'Internal error' });
   } finally {
     client.release();
   }
@@ -113,7 +113,7 @@ router.put('/:id', adminOnly, async (req, res) => {
   const { id_proveedor, nombre_producto, tipo_producto, valor_compra, precio_venta } = req.body;
 
   if (!id_proveedor || !nombre_producto || !tipo_producto || valor_compra == null || precio_venta == null) {
-    return res.status(400).json({ error: 'Este campo es obligatorio' });
+    return res.status(400).json({ error: 'This field is required' });
   }
 
   try {
@@ -121,7 +121,7 @@ router.put('/:id', adminOnly, async (req, res) => {
     const actual = actualRes.rows[0];
 
     if (!actual) {
-      return res.status(404).json({ error: 'Producto no encontrado' });
+      return res.status(404).json({ error: 'Product not found' });
     }
 
     const result = await pool.query(
@@ -131,29 +131,29 @@ router.put('/:id', adminOnly, async (req, res) => {
 
     const cambios = [];
     if (Number(actual.valor_compra) !== Number(valor_compra)) {
-      cambios.push(`valor de compra: $${actual.valor_compra} -> $${valor_compra}`);
+      cambios.push(`cost price: $${actual.valor_compra} -> $${valor_compra}`);
     }
     if (Number(actual.precio_venta) !== Number(precio_venta)) {
-      cambios.push(`valor de venta: $${actual.precio_venta} -> $${precio_venta}`);
+      cambios.push(`sale price: $${actual.precio_venta} -> $${precio_venta}`);
     }
     if (actual.id_proveedor !== id_proveedor) {
-      cambios.push('proveedor actualizado');
+      cambios.push('supplier updated');
     }
     if (actual.nombre_producto !== nombre_producto) {
-      cambios.push(`nombre: ${actual.nombre_producto} -> ${nombre_producto}`);
+      cambios.push(`name: ${actual.nombre_producto} -> ${nombre_producto}`);
     }
 
     if (cambios.length > 0) {
       await pool.query(
         `INSERT INTO audit_logs (usuario_id, tipo_operacion, detalles) VALUES ($1, $2, $3)`,
-        [req.user.id_usuario, 'UPDATE_PRODUCT', `Producto ${id}: ${cambios.join(', ')}`]
+        [req.user.id_usuario, 'UPDATE_PRODUCT', `Product ${id}: ${cambios.join(', ')}`]
       );
     }
 
     res.json(result.rows[0]);
   } catch (error) {
-    console.error('Error editando producto:', error);
-    res.status(500).json({ error: 'Error interno' });
+    console.error('Error editing product:', error);
+    res.status(500).json({ error: 'Internal error' });
   }
 });
 
@@ -166,13 +166,13 @@ router.patch('/:id/status', adminOnly, async (req, res) => {
 
     await pool.query(
       `INSERT INTO audit_logs (usuario_id, tipo_operacion, detalles) VALUES ($1, $2, $3)`,
-      [req.user.id_usuario, 'CHANGE_PRODUCT_STATUS', `Producto ${id} marcado como ${estado}`]
+      [req.user.id_usuario, 'CHANGE_PRODUCT_STATUS', `Product ${id} marked as ${estado}`]
     );
 
-    res.json({ message: `Producto marcado como ${estado}` });
+    res.json({ message: `Product marked as ${estado}` });
   } catch (error) {
-    console.error('Error cambiando estado producto:', error);
-    res.status(500).json({ error: 'Error interno' });
+    console.error('Error changing product status:', error);
+    res.status(500).json({ error: 'Internal error' });
   }
 });
 
