@@ -58,9 +58,9 @@ router.get('/', requireSameSede, async (req, res) => {
 });
 
 router.post('/', adminOnly, async (req, res) => {
-  const { codigo_producto, id_proveedor, nombre_producto, tipo_producto, valor_compra, precio_venta, confirmar } = req.body;
+  const { id_proveedor, nombre_producto, tipo_producto, valor_compra, precio_venta, confirmar } = req.body;
 
-  if (!codigo_producto || !id_proveedor || !nombre_producto || !tipo_producto || valor_compra == null || precio_venta == null) {
+  if (!id_proveedor || !nombre_producto || !tipo_producto || valor_compra == null || precio_venta == null) {
     return res.status(400).json({ error: 'This field is required' });
   }
 
@@ -76,8 +76,8 @@ router.post('/', adminOnly, async (req, res) => {
     await client.query('BEGIN');
 
     const result = await client.query(
-      'INSERT INTO productos (codigo_producto, id_proveedor, nombre_producto, tipo_producto, valor_compra, precio_venta, estado) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [codigo_producto, id_proveedor, nombre_producto, tipo_producto, valor_compra, precio_venta, 'Activo']
+      'INSERT INTO productos (id_proveedor, nombre_producto, tipo_producto, valor_compra, precio_venta, estado) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [id_proveedor, nombre_producto, tipo_producto, valor_compra, precio_venta, 'Activo']
     );
     const newProduct = result.rows[0];
 
@@ -91,7 +91,7 @@ router.post('/', adminOnly, async (req, res) => {
 
     await client.query(
       `INSERT INTO audit_logs (usuario_id, tipo_operacion, detalles) VALUES ($1, $2, $3)`,
-      [req.user.id_usuario, 'CREATE_PRODUCT', `Created product ${nombre_producto} (${codigo_producto})`]
+      [req.user.id_usuario, 'CREATE_PRODUCT', `Created product ${nombre_producto} (${newProduct.codigo_producto})`]
     );
 
     await client.query('COMMIT');

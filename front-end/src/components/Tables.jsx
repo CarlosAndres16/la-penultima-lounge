@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import './Tables.css';
-import { t, TABLE_STATUS_LABEL } from '../i18n';
+import Toast from './Toast';
 
+import { t, TABLE_STATUS_LABEL } from '../i18n';
 const API = 'http://localhost:3000/api/v1';
 
 export default function Tables({ userRol, selectedSede }) {
@@ -16,6 +17,7 @@ export default function Tables({ userRol, selectedSede }) {
   const [numeroMesa, setNumeroMesa] = useState('');
   const [modalError, setModalError] = useState('');
   const [saving, setSaving] = useState(false);
+const [toast, setToast] = useState(null);
 
   const isAdmin = userRol === 'Administrador';
   const hasBranch = selectedSede && selectedSede !== 'ALL';
@@ -97,10 +99,6 @@ export default function Tables({ userRol, selectedSede }) {
   };
 
   const handleDelete = async (mesa) => {
-    if (!window.confirm(`Are you sure you want to delete table ${mesa.numero_mesa}?`)) {
-      return;
-    }
-
     setPageError('');
     try {
       const res = await fetch(`${API}/sedes/${selectedSede}/mesas/${mesa.id_mesa}`, {
@@ -114,8 +112,10 @@ export default function Tables({ userRol, selectedSede }) {
       }
 
       fetchMesas();
+      setToast({ message: 'Table deleted successfully', type: 'success' });
     } catch (err) {
       setPageError(err.message);
+      setToast({ message: err.message, type: 'error' });
     }
   };
 

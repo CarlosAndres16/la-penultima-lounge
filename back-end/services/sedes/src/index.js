@@ -2,6 +2,7 @@ import express from 'express';
 import sedesRouter from './routes/sedes.js';
 import proveedoresRouter from './routes/proveedores.js';
 import productosRouter from './routes/productos.js';
+import sedesMyRouter from './routes/sedesMy.js';
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -13,6 +14,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/v1/sedes', sedesRouter);
+app.use('/api/v1/sedes/mia', sedesMyRouter);
 app.use('/api/v1/proveedores', proveedoresRouter);
 app.use('/api/v1/productos', productosRouter);
 

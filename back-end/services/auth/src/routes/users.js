@@ -35,14 +35,17 @@ router.get('/', async (req, res) => {
 
 // POST /api/v1/users - Create user
 router.post('/', async (req, res) => {
-  const { codigo_usuario, nombre_completo, username, password, id_rol, id_sede, estado } = req.body;
+  const { nombre_completo, username, password, id_rol, id_sede, estado } = req.body;
 
-  if (!codigo_usuario || !nombre_completo || !username || !password || !id_rol || !id_sede) {
+  // Generate a unique user code server‑side
+  const codigo_usuario = `USR-${Date.now()}`;
+
+  if (!nombre_completo || !username || !password || !id_rol || !id_sede) {
     return res.status(400).json({ error: 'Required fields are missing' });
   }
 
   if (!isValidPassword(password)) {
-    return res.status(400).json({ error: 'Password must be at least 8 characters long and include at least 1 letter and 1 number' });
+    return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres, una letra y un número' });
   }
 
   try {
@@ -64,7 +67,8 @@ router.post('/', async (req, res) => {
       if (error.constraint === 'usuarios_codigo_usuario_key') {
         return res.status(400).json({ error: 'User code already exists' });
       }
-      return res.status(400).json({ error: 'Username is already in use' });
+      // Duplicate username
+      return res.status(400).json({ error: 'El nombre de usuario ya se encuentra en uso' });
     }
     console.error('Error creating user:', error);
     res.status(500).json({ error: 'Internal server error' });

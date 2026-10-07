@@ -39,30 +39,24 @@ app.post('/api/v1/auth/login', async (req, res) => {
     const user = result.rows[0];
 
     if (!user) {
-      return res.status(401).json({ error: 'Incorrect username or password' });
+      return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
     }
 
     const match = await bcrypt.compare(password, user.password_hash);
 
     if (!match) {
-      const nuevosIntentos = user.intentos_fallidos + 1;
-
-      if (nuevosIntentos >= 3) {
-        await pool.query(
-          'UPDATE usuarios SET intentos_fallidos = $1, estado = $2 WHERE id_usuario = $3',
-          [nuevosIntentos, 'Bloqueado', user.id_usuario]
-        );
-        return res.status(403).json({
-          error: 'Account blocked after 3 failed attempts. Please contact an Administrator.'
-        });
-      }
-
+      const nuevosIntentos = (user.intentos_fallidos || 0) + 1;
+      const bloquear = nuevosIntentos >= 3;
+      const nuevoEstado = bloquear ? 'Bloqueado' : user.estado;
       await pool.query(
-        'UPDATE usuarios SET intentos_fallidos = $1 WHERE id_usuario = $2',
-        [nuevosIntentos, user.id_usuario]
+        'UPDATE usuarios SET intentos_fallidos = $1, estado = $2 WHERE id_usuario = $3',
+        [nuevosIntentos, nuevoEstado, user.id_usuario]
       );
-
-      return res.status(401).json({ error: 'Incorrect username or password' });
+      const mensaje = bloquear
+        ? 'Cuenta bloqueada tras 3 intentos fallidos. Contacte a un Administrador'
+        : 'Usuario o contraseña incorrectos';
+      const codigo = bloquear ? 403 : 401;
+      return res.status(codigo).json({ error: mensaje });
     }
 
     if (user.estado === 'Bloqueado') {

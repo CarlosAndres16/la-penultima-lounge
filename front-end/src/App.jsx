@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import UserManagement from './components/UserManagement';
 import Catalog from './components/Catalog';
 import Tables from './components/Tables';
+import Sedes from './components/Sedes';
 import { t, ROLE_LABEL } from './i18n';
 
 function App() {
@@ -11,16 +12,20 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedSede, setSelectedSede] = useState('ALL');
 
+  // Load persisted user and map Spanish fields to English‑friendly aliases
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
       const parsed = JSON.parse(savedUser);
-      setUser(parsed);
-      if (parsed.rol !== 'Administrador') {
-        setSelectedSede(parsed.id_sede);
+      const { nombre_completo: fullName, rol: role, id_sede: branchId } = parsed;
+      const userWithAliases = { ...parsed, fullName, role, branchId };
+      setUser(userWithAliases);
+      if (role !== 'Administrador') {
+        setSelectedSede(branchId);
       }
     }
   }, []);
+
 
   const handleLoginSuccess = (userData) => {
     setUser(userData);
@@ -72,9 +77,10 @@ function App() {
           </button>
 
           {user.rol === 'Administrador' && (
-            <button onClick={() => setActiveTab('users')} style={tabStyle('users')}>
-              Users
-            </button>
+            <> 
+              <button onClick={() => setActiveTab('users')} style={tabStyle('users')}>Users</button>
+              <button onClick={() => setActiveTab('sedes')} style={tabStyle('sedes')}>Branches</button>
+            </>
           )}
         </div>
 
@@ -96,6 +102,9 @@ function App() {
 
         {activeTab === 'tables' && (
           <Tables userRol={user.rol} selectedSede={selectedSede} />
+        )}
+        {activeTab === 'sedes' && (
+          <Sedes />
         )}
       </main>
     </div>

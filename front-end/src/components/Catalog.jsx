@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import './Catalog.css';
 import { t, STATUS_LABEL } from '../i18n';
+import Toast from './Toast';
 
 const EMPTY_FORM = {
-  codigo_producto: '',
   nombre_producto: '',
   tipo_producto: '',
   valor_compra: '',
@@ -107,9 +107,8 @@ export default function Catalog({ userRol, selectedSede }) {
       precio_venta: Number(formData.precio_venta)
     };
 
-    if (!isEdit) {
-      payload.codigo_producto = formData.codigo_producto;
-      if (confirmar) payload.confirmar = true;
+    if (!isEdit && confirmar) {
+      payload.confirmar = true;
     }
 
     try {
@@ -149,11 +148,9 @@ export default function Catalog({ userRol, selectedSede }) {
   const handleToggleStatus = async (id, currentStatus) => {
     const newStatus = currentStatus === 'Activo' ? 'Inactivo' : 'Activo';
 
-    if (currentStatus === 'Activo') {
-      if (!window.confirm('Are you sure you want to deactivate this product?')) {
-        return;
-      }
-    }
+    // Directly proceed with status toggle without native confirmation.
+    // If confirmation is needed, implement a custom modal/dialog in future.
+    // (No additional code needed here)
 
     const token = localStorage.getItem('token');
     try {
@@ -254,20 +251,7 @@ export default function Catalog({ userRol, selectedSede }) {
             {error && <div className="error-message">{error}</div>}
 
             <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label>Code</label>
-                {editingProduct ? (
-                  <input type="text" value={editingProduct.codigo_producto} readOnly disabled />
-                ) : (
-                  <input
-                    type="text"
-                    placeholder="e.g. PRD-300"
-                    value={formData.codigo_producto}
-                    onChange={e => setFormData({...formData, codigo_producto: e.target.value})}
-                    required
-                  />
-                )}
-              </div>
+
 
               <div className="form-group">
                 <label>Product Name</label>

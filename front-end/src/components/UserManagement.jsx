@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import './UserManagement.css';
 import { t, ROLE_LABEL, STATUS_LABEL } from '../i18n';
+import Toast from './Toast';
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -9,10 +10,10 @@ export default function UserManagement() {
   // Modal State
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  
+
   // Form State
+  const [branches, setBranches] = useState([]);
   const [formData, setFormData] = useState({
-    codigo_usuario: '',
     nombre_completo: '',
     username: '',
     password: '',
@@ -22,22 +23,41 @@ export default function UserManagement() {
   });
 
   const [error, setError] = useState('');
+  // Toast state for UX-friendly notifications
+  const [toast, setToast] = useState(null);
 
+  // Load users and branches on mount
   useEffect(() => {
     fetchUsers();
+    const fetchBranches = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('http://localhost:3000/api/v1/sedes', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to load branches');
+        const data = await res.json();
+        setBranches(data);
+      } catch (err) {
+        console.error(err);
+        setToast({ message: err.message, type: 'error' });
+      }
+    };
+    fetchBranches();
   }, []);
 
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('token');
       const res = await fetch('http://localhost:3000/api/v1/users', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Failed to load users');
       const data = await res.json();
       setUsers(data);
     } catch (err) {
       console.error(err);
+      setToast({ message: err.message, type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -51,7 +71,7 @@ export default function UserManagement() {
         codigo_usuario: user.codigo_usuario,
         nombre_completo: user.nombre_completo,
         username: user.username,
-        password: '', // When editing, leave empty so the password is not overwritten unless something is typed
+        password: '', // keep empty unless changed
         id_rol: user.id_rol,
         id_sede: user.id_sede || '',
         estado: user.estado
@@ -76,36 +96,31 @@ export default function UserManagement() {
     setError('');
     const token = localStorage.getItem('token');
     const isEdit = !!editingUser;
-    
-    const url = isEdit 
+    const url = isEdit
       ? `http://localhost:3000/api/v1/users/${editingUser.id_usuario}`
       : 'http://localhost:3000/api/v1/users';
-      
     const method = isEdit ? 'PUT' : 'POST';
-
     const payload = { ...formData };
-    // If editing and the password is empty, do not send it
-    if (isEdit && !payload.password) {
-      delete payload.password;
-    }
-
+    if (isEdit && !payload.password) delete payload.password;
     try {
       const res = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify(payload)
       });
-
       if (!res.ok) {
         const errData = await res.json();
         throw new Error(errData.error || 'Failed to save');
       }
-
       setShowModal(false);
       fetchUsers();
+      setToast({
+        message: isEdit ? 'User updated successfully' : 'User created successfully',
+        type: 'success'
+      });
     } catch (err) {
       setError(err.message);
     }
@@ -113,30 +128,33 @@ export default function UserManagement() {
 
   const handleToggleStatus = async (id, currentStatus) => {
     const newStatus = currentStatus === 'Activo' ? 'Inactivo' : 'Activo';
-    if (currentStatus === 'Activo') {
-      if (!window.confirm('Are you sure you want to deactivate this user? They will lose their session immediately.')) {
-        return;
-      }
-    }
-
+    // Directly proceed with status toggle without native confirmation alert.
+    // If confirmation is needed, implement a custom modal/dialog in future.
+    // For now, we skip the window.confirm step.
+    // (No additional code needed here)
     const token = localStorage.getItem('token');
     try {
       const res = await fetch(`http://localhost:3000/api/v1/users/${id}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({ estado: newStatus })
       });
       if (!res.ok) {
         const errData = await res.json();
-        alert(errData.error);
+        setToast({ message: errData.error || 'Failed to change status', type: 'error' });
         return;
       }
       fetchUsers();
+      setToast({
+        message: `User ${newStatus === 'Activo' ? 'activated' : 'deactivated'} successfully`,
+        type: 'success'
+      });
     } catch (err) {
       console.error(err);
+      setToast({ message: err.message, type: 'error' });
     }
   };
 
@@ -153,7 +171,7 @@ export default function UserManagement() {
         <thead>
           <tr>
             <th>Code</th>
-            <th>Full Name</th>
+            <th>Full Names</th>
             <th>Username</th>
             <th>Role</th>
             <th>Assigned Branch</th>
@@ -169,13 +187,11 @@ export default function UserManagement() {
               <td>{u.username}</td>
               <td>{t(ROLE_LABEL, u.nombre_rol)}</td>
               <td>{u.nombre_sede || 'N/A'}</td>
-              <td>
-                <span className={`status-badge ${u.estado.toLowerCase()}`}>{t(STATUS_LABEL, u.estado)}</span>
-              </td>
+              <td><span className={`status-badge ${u.estado.toLowerCase()}`}>{t(STATUS_LABEL, u.estado)}</span></td>
               <td className="actions">
                 <button className="btn-icon" onClick={() => handleOpenModal(u)} title="Edit">✏️</button>
-                <button 
-                  className="btn-icon" 
+                <button
+                  className="btn-icon"
                   onClick={() => handleToggleStatus(u.id_usuario, u.estado)}
                   title={u.estado === 'Activo' ? 'Deactivate' : 'Activate'}
                 >
@@ -192,61 +208,45 @@ export default function UserManagement() {
           <div className="modal">
             <h3>{editingUser ? 'Edit User' : 'New User'}</h3>
             {error && <div className="error-message">{error}</div>}
-            
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label>Code</label>
-                {editingUser ? (
-                  <input type="text" value={editingUser.codigo_usuario} readOnly disabled />
-                ) : (
-                  <input
-                    type="text"
-                    placeholder="e.g. USR-010"
-                    value={formData.codigo_usuario}
-                    onChange={e => setFormData({...formData, codigo_usuario: e.target.value})}
-                    required
-                  />
-                )}
-              </div>
-
-              <div className="form-group">
-                <label>Full Name</label>
-                <input 
-                  type="text" 
-                  value={formData.nombre_completo} 
-                  onChange={e => setFormData({...formData, nombre_completo: e.target.value})} 
-                  required 
+                <label>Full Names</label>
+                <input
+                  type="text"
+                  value={formData.nombre_completo}
+                  onChange={e => setFormData({ ...formData, nombre_completo: e.target.value })}
+                  required
                 />
               </div>
 
               <div className="form-group">
                 <label>Username</label>
-                <input 
-                  type="text" 
-                  value={formData.username} 
-                  onChange={e => setFormData({...formData, username: e.target.value})} 
-                  readOnly={!!editingUser} 
+                <input
+                  type="text"
+                  value={formData.username}
+                  onChange={e => setFormData({ ...formData, username: e.target.value })}
+                  readOnly={!!editingUser}
                   disabled={!!editingUser}
-                  required 
+                  required
                 />
               </div>
 
               <div className="form-group">
                 <label>Password {editingUser && '(Optional: leave blank to keep current)'}</label>
-                <input 
-                  type="password" 
-                  value={formData.password} 
-                  onChange={e => setFormData({...formData, password: e.target.value})} 
-                  required={!editingUser} 
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={e => setFormData({ ...formData, password: e.target.value })}
+                  required={!editingUser}
                   placeholder="Min 8 chars, 1 letter, 1 number"
                 />
               </div>
 
               <div className="form-group">
                 <label>Role</label>
-                <select 
-                  value={formData.id_rol} 
-                  onChange={e => setFormData({...formData, id_rol: e.target.value})}
+                <select
+                  value={formData.id_rol}
+                  onChange={e => setFormData({ ...formData, id_rol: e.target.value })}
                 >
                   <option value="1">{ROLE_LABEL.Mesero}</option>
                   <option value="2">{ROLE_LABEL.Cajero}</option>
@@ -256,14 +256,14 @@ export default function UserManagement() {
 
               <div className="form-group">
                 <label>Assigned Branch</label>
-                {/* Ideally branches would be fetched dynamically; mock for now: */}
-                <select 
-                  value={formData.id_sede} 
-                  onChange={e => setFormData({...formData, id_sede: e.target.value})}
+                <select
+                  value={formData.id_sede}
+                  onChange={e => setFormData({ ...formData, id_sede: e.target.value })}
                 >
                   <option value="">None</option>
-                  <option value="1">La Penúltima — Zona Rosa</option>
-                  <option value="2">La Penúltima — Chapinero</option>
+                  {branches.map(branch => (
+                    <option key={branch.id_sede} value={branch.id_sede}>{branch.nombre_sede}</option>
+                  ))}
                 </select>
               </div>
 
@@ -274,6 +274,14 @@ export default function UserManagement() {
             </form>
           </div>
         </div>
+      )}
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
       )}
     </div>
   );
