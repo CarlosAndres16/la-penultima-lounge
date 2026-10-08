@@ -75,9 +75,16 @@ router.post('/', adminOnly, async (req, res) => {
   try {
     await client.query('BEGIN');
 
+// Generate product code using the sequence
+    const seqRes = await client.query("SELECT nextval('productos_id_producto_seq') AS seq");
+    const generatedCode = `PRD-${seqRes.rows[0].seq}`;
+
     const result = await client.query(
-      'INSERT INTO productos (id_proveedor, nombre_producto, tipo_producto, valor_compra, precio_venta, estado) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [id_proveedor, nombre_producto, tipo_producto, valor_compra, precio_venta, 'Activo']
+      `INSERT INTO productos
+         (codigo_producto, id_proveedor, nombre_producto, tipo_producto, valor_compra, precio_venta, estado)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [generatedCode, id_proveedor, nombre_producto, tipo_producto, valor_compra, precio_venta, 'Activo']
     );
     const newProduct = result.rows[0];
 
