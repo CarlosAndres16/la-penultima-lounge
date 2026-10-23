@@ -40,6 +40,7 @@ export default function Tables({ userRol, selectedSede, onOpenOrder }) {
   const [pedido, setPedido] = useState(null);
   const [pedidoError, setPedidoError] = useState('');
   const [creatingOrder, setCreatingOrder] = useState(false);
+  const [changingStatus, setChangingStatus] = useState(false);
   const [tick, setTick] = useState(0);
 
   const isAdmin = userRol === 'Administrador';
@@ -210,6 +211,32 @@ export default function Tables({ userRol, selectedSede, onOpenOrder }) {
     }
   };
 
+  // Reserve a free table or release a reserved one (Waiter, Cashier and Administrator)
+  const handleChangeStatus = async (nuevoEstado) => {
+    if (!selectedMesa) return;
+    setChangingStatus(true);
+    try {
+      const res = await fetch(`${API}/sedes/${selectedMesa.id_sede}/mesas/${selectedMesa.id_mesa}/estado`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ estado: nuevoEstado })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to change the table status');
+
+      setToast({
+        message: `Table ${selectedMesa.numero_mesa} is now ${t(TABLE_STATUS_LABEL, nuevoEstado).toLowerCase()}`,
+        type: 'success'
+      });
+      fetchMesas(true);
+    } catch (err) {
+      setToast({ message: err.message, type: 'error' });
+      fetchMesas(true); // the table may have changed in the meantime
+    } finally {
+      setChangingStatus(false);
+    }
+  };
+
   const sedeActual = sedes.find(s => String(s.id_sede) === String(selectedSede));
   const filtered = mesas.filter(m =>
     m.numero_mesa.toLowerCase().includes(searchTerm.trim().toLowerCase())
@@ -324,11 +351,30 @@ export default function Tables({ userRol, selectedSede, onOpenOrder }) {
                         ) : (
                           <p className="tables-hint">Only waiters can start an order.</p>
                         )}
+                        <button
+                          type="button"
+                          className="tables-btn-secondary"
+                          style={{ marginTop: '0.6rem' }}
+                          onClick={() => handleChangeStatus('Reservada')}
+                          disabled={changingStatus || creatingOrder}
+                        >
+                          {changingStatus ? 'Updating...' : 'Mark as Reserved'}
+                        </button>
                       </>
                     )}
 
                     {selectedMesa.estado_actual === 'Reservada' && (
-                      <p className="tables-hint">This table is reserved.</p>
+                      <>
+                        <p className="tables-hint">This table is reserved.</p>
+                        <button
+                          type="button"
+                          className="tables-btn-secondary"
+                          onClick={() => handleChangeStatus('Libre')}
+                          disabled={changingStatus}
+                        >
+                          {changingStatus ? 'Updating...' : 'Mark as Free'}
+                        </button>
+                      </>
                     )}
 
                     {selectedMesa.estado_actual === 'Ocupada' && (
