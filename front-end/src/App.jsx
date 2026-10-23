@@ -5,6 +5,7 @@ import UserManagement from './components/UserManagement';
 import Catalog from './components/Catalog';
 import Tables from './components/Tables';
 import Sedes from './components/Sedes';
+import Restock from './components/Restock';
 import { t, ROLE_LABEL } from './i18n';
 import { logout } from './utils/auth';
 
@@ -82,6 +83,12 @@ function App() {
             Tables
           </button>
 
+          {(user.rol === 'Administrador' || user.rol === 'Cajero') && (
+            <button onClick={() => setActiveTab('restock')} style={tabStyle('restock')}>
+              Restock
+            </button>
+          )}
+
           {user.rol === 'Administrador' && (
             <> 
               <button onClick={() => setActiveTab('users')} style={tabStyle('users')}>Users</button>
@@ -111,6 +118,10 @@ function App() {
         )}
         {activeTab === 'sedes' && (
           <Sedes />
+        )}
+
+        {activeTab === 'restock' && (user.rol === 'Administrador' || user.rol === 'Cajero') && (
+          <Restock userRol={user.rol} selectedSede={selectedSede} />
         )}
       </main>
     </div>

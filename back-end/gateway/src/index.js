@@ -23,7 +23,7 @@ app.use(
   createProxyMiddleware({
     target: 'http://sedes:3002',
     changeOrigin: true,
-    pathFilter: ['/api/v1/sedes', '/api/v1/productos', '/api/v1/proveedores'],
+    pathFilter: ['/api/v1/sedes', '/api/v1/productos', '/api/v1/proveedores', '/api/v1/reabastecimientos', '/api/v1/pedidos'],
   })
 );
 

@@ -73,7 +73,9 @@ CREATE TABLE inventario_sede (
  cantidad_disponible INT DEFAULT 0,
  CONSTRAINT fk_inventario_sede FOREIGN KEY (id_sede) REFERENCES sedes(id_sede),
  CONSTRAINT fk_inventario_producto FOREIGN KEY (id_producto) REFERENCES productos(id_producto),
- CONSTRAINT unique_sede_producto UNIQUE (id_sede, id_producto)
+ CONSTRAINT unique_sede_producto UNIQUE (id_sede, id_producto),
+ -- HU-23/HU-24: stock can never go below zero, even with simultaneous requests
+ CONSTRAINT chk_inventario_no_negativo CHECK (cantidad_disponible >= 0)
 );
 
 CREATE TABLE historial_reabastecimientos (
@@ -99,6 +101,9 @@ CREATE TABLE pedidos (
  CONSTRAINT fk_pedido_usuario FOREIGN KEY (id_usuario_mesero) REFERENCES usuarios(id_usuario)
 );
 
+-- HU-22 CA-03: a table can have at most ONE open order at any time
+CREATE UNIQUE INDEX uq_pedido_abierto_por_mesa ON pedidos (id_mesa) WHERE estado = 'Abierto';
+
 CREATE TABLE detalle_pedido (
  id_detalle_pedido SERIAL PRIMARY KEY,
  id_pedido INT NOT NULL,
@@ -107,7 +112,8 @@ CREATE TABLE detalle_pedido (
  precio_unitario NUMERIC(10, 2) NOT NULL,
  subtotal NUMERIC(10, 2) NOT NULL,
  CONSTRAINT fk_detalle_pedido FOREIGN KEY (id_pedido) REFERENCES pedidos(id_pedido),
- CONSTRAINT fk_detalle_producto FOREIGN KEY (id_producto) REFERENCES productos(id_producto)
+ CONSTRAINT fk_detalle_producto FOREIGN KEY (id_producto) REFERENCES productos(id_producto),
+ CONSTRAINT chk_detalle_cantidad_positiva CHECK (cantidad > 0)
 );
 
 CREATE TABLE facturas (

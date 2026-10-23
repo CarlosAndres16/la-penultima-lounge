@@ -1,11 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import './Tables.css';
 import Toast from './Toast';
 
 import { t, TABLE_STATUS_LABEL } from '../i18n';
 const API = 'http://localhost:3000/api/v1';
+const POLL_MS = 5000; // HU-21 CA-02: the map refreshes by itself, no manual page reload
+const money = (n) => `$ ${Number(n || 0).toLocaleString('es-CO')}`;
+const formatTime = (iso) =>
+  new Date(iso).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: false });
 
-export default function Tables({ userRol, selectedSede }) {
+/**
+ * Tables screen.
+ * - Everyone (Waiter, Cashier, Administrator): live table map of the branch with the summary of the
+ *   open order of each occupied table (HU-21) and "New Order" on free tables (HU-22).
+ * - Administrator only: also creates and deletes the tables of the branch (HU-18).
+ *
+ * @param {string} props.userRol - Role of the logged-in user.
+ * @param {string|number} props.selectedSede - Selected branch ("ALL" for the Administrator = none).
+ * @param {Function} [props.onOpenOrder] - Called with the order when it is started or opened,
+ *   so the parent can show the order registration screen (HU-24).
+ */
+export default function Tables({ userRol, selectedSede, onOpenOrder }) {
   const [mesas, setMesas] = useState([]);
   const [sedes, setSedes] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -17,25 +32,62 @@ export default function Tables({ userRol, selectedSede }) {
   const [numeroMesa, setNumeroMesa] = useState('');
   const [modalError, setModalError] = useState('');
   const [saving, setSaving] = useState(false);
-const [toast, setToast] = useState(null);
+  const [toast, setToast] = useState(null);
+  const closeToast = useCallback(() => setToast(null), []);
+
+  // Table map state (HU-21 / HU-22)
+  const [selectedId, setSelectedId] = useState(null);
+  const [pedido, setPedido] = useState(null);
+  const [pedidoError, setPedidoError] = useState('');
+  const [creatingOrder, setCreatingOrder] = useState(false);
+  const [tick, setTick] = useState(0);
 
   const isAdmin = userRol === 'Administrador';
+  // Waiter and Administrator can start orders (HU-22)
+  const canStartOrder = userRol === 'Mesero' || isAdmin;
   const hasBranch = selectedSede && selectedSede !== 'ALL';
   const authHeaders = () => ({ 'Authorization': `Bearer ${localStorage.getItem('token')}` });
+
+  const selectedMesa = mesas.find((m) => m.id_mesa === selectedId) || null;
+  const selectedEstado = selectedMesa ? selectedMesa.estado_actual : null;
 
   useEffect(() => {
     fetchSedes();
   }, []);
 
+  // Polling: every POLL_MS the tick changes and the effects below refresh the map and the order summary
+  useEffect(() => {
+    const timer = setInterval(() => setTick((n) => n + 1), POLL_MS);
+    return () => clearInterval(timer);
+  }, []);
+
   useEffect(() => {
     setSearchTerm('');
     setPageError('');
+    setSelectedId(null);
     if (hasBranch) {
       fetchMesas();
     } else {
       setMesas([]);
     }
   }, [selectedSede]);
+
+  // Silent refresh of the tables (no "Loading..." flicker)
+  useEffect(() => {
+    if (tick > 0 && hasBranch) {
+      fetchMesas(true);
+    }
+  }, [tick]);
+
+  // HU-21 CA-03: summary of the open order when an occupied table is selected
+  useEffect(() => {
+    if (selectedId === null || selectedEstado !== 'Ocupada') {
+      setPedido(null);
+      setPedidoError('');
+      return;
+    }
+    fetchPedido(selectedId);
+  }, [selectedId, selectedEstado, tick]);
 
   const fetchSedes = async () => {
     try {
@@ -47,8 +99,8 @@ const [toast, setToast] = useState(null);
     }
   };
 
-  const fetchMesas = async () => {
-    setLoading(true);
+  const fetchMesas = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await fetch(`${API}/sedes/${selectedSede}/mesas`, { headers: authHeaders() });
       if (!res.ok) {
@@ -59,9 +111,22 @@ const [toast, setToast] = useState(null);
       setPageError('');
     } catch (err) {
       setPageError(err.message);
-      setMesas([]);
+      if (!silent) setMesas([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
+    }
+  };
+
+  const fetchPedido = async (idMesa) => {
+    try {
+      const res = await fetch(`${API}/pedidos/mesa/${idMesa}`, { headers: authHeaders() });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to load the order');
+      setPedido(data);
+      setPedidoError('');
+    } catch (err) {
+      setPedido(null);
+      setPedidoError(err.message);
     }
   };
 
@@ -111,6 +176,7 @@ const [toast, setToast] = useState(null);
         throw new Error(errData.error || 'Failed to delete table');
       }
 
+      if (selectedId === mesa.id_mesa) setSelectedId(null);
       fetchMesas();
       setToast({ message: 'Table deleted successfully', type: 'success' });
     } catch (err) {
@@ -119,20 +185,47 @@ const [toast, setToast] = useState(null);
     }
   };
 
+  // HU-22: start an order on the selected free table
+  const handleNewOrder = async () => {
+    if (!selectedMesa) return;
+    setCreatingOrder(true);
+    try {
+      const res = await fetch(`${API}/pedidos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ id_mesa: selectedMesa.id_mesa })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to start the order');
+
+      setToast({ message: `Order started on table ${selectedMesa.numero_mesa}`, type: 'success' });
+      setPedido(data);
+      fetchMesas(true);
+      if (onOpenOrder) onOpenOrder(data);
+    } catch (err) {
+      setToast({ message: err.message, type: 'error' });
+      fetchMesas(true); // another user may have taken the table in the meantime
+    } finally {
+      setCreatingOrder(false);
+    }
+  };
+
   const sedeActual = sedes.find(s => String(s.id_sede) === String(selectedSede));
   const filtered = mesas.filter(m =>
     m.numero_mesa.toLowerCase().includes(searchTerm.trim().toLowerCase())
   );
+  // Ignore a late response that belongs to a table that is no longer selected
+  const pedidoActual = pedido && pedido.id_mesa === selectedId ? pedido : null;
 
   return (
     <div className="tables-container">
       <div className="tables-header">
         <div>
-          <h2>Table Management</h2>
+          <h2>Tables</h2>
           <p className="tables-subtitle">
             {hasBranch
-              ? `Table configuration${sedeActual ? ` — ${sedeActual.nombre_sede}` : ''}`
-              : 'Table configuration by branch'}
+              ? `Live status of the tables${sedeActual ? ` — ${sedeActual.nombre_sede}` : ''}`
+              : 'Live status of the tables by branch'}
           </p>
         </div>
         {isAdmin && hasBranch && (
@@ -142,7 +235,9 @@ const [toast, setToast] = useState(null);
 
       {!hasBranch ? (
         <div className="tables-empty">
-          Select a specific branch in the top bar to manage its tables.
+          {isAdmin
+            ? 'Select a specific branch in the top bar to see its tables.'
+            : 'Your user has no assigned branch.'}
         </div>
       ) : (
         <>
@@ -165,22 +260,136 @@ const [toast, setToast] = useState(null);
               {mesas.length === 0 ? 'No tables registered for this branch yet' : 'No tables found'}
             </div>
           ) : (
-            <div className="tables-grid">
-              {filtered.map(m => (
-                <div key={m.id_mesa} className={`table-card table-${m.estado_actual.toLowerCase()}`}>
-                  {isAdmin && (
-                    <button
-                      className="table-delete"
-                      onClick={() => handleDelete(m)}
-                      title="Delete table"
-                    >
-                      ✕
-                    </button>
-                  )}
-                  <span className="table-number">{m.numero_mesa}</span>
-                  <span className="table-status">{t(TABLE_STATUS_LABEL, m.estado_actual)}</span>
-                </div>
-              ))}
+            <div className="tables-layout">
+              <div className="tables-grid">
+                {filtered.map(m => (
+                  <div
+                    key={m.id_mesa}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={m.id_mesa === selectedId}
+                    className={`table-card table-${m.estado_actual.toLowerCase()}${
+                      m.id_mesa === selectedId ? ' table-card-selected' : ''
+                    }`}
+                    onClick={() => setSelectedId(m.id_mesa)}
+                    onKeyDown={(e) => {
+                      if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                        e.preventDefault();
+                        setSelectedId(m.id_mesa);
+                      }
+                    }}
+                  >
+                    {isAdmin && (
+                      <button
+                        className="table-delete"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(m);
+                        }}
+                        title="Delete table"
+                      >
+                        ✕
+                      </button>
+                    )}
+                    <span className="table-number">{m.numero_mesa}</span>
+                    <span className="table-status">{t(TABLE_STATUS_LABEL, m.estado_actual)}</span>
+                  </div>
+                ))}
+              </div>
+
+              <aside className="tables-detail">
+                {!selectedMesa ? (
+                  <p className="tables-hint">Select a table to see its detail</p>
+                ) : (
+                  <>
+                    <div className="tables-detail-head">
+                      <h3>Table {selectedMesa.numero_mesa}</h3>
+                      <span className={`tables-badge table-${selectedMesa.estado_actual.toLowerCase()}`}>
+                        {t(TABLE_STATUS_LABEL, selectedMesa.estado_actual)}
+                      </span>
+                    </div>
+
+                    {selectedMesa.estado_actual === 'Libre' && (
+                      <>
+                        <p className="tables-hint">This table is available.</p>
+                        {canStartOrder ? (
+                          <button
+                            type="button"
+                            className="tables-btn-primary"
+                            onClick={handleNewOrder}
+                            disabled={creatingOrder}
+                          >
+                            {creatingOrder ? 'Starting...' : 'New Order'}
+                          </button>
+                        ) : (
+                          <p className="tables-hint">Only waiters can start an order.</p>
+                        )}
+                      </>
+                    )}
+
+                    {selectedMesa.estado_actual === 'Reservada' && (
+                      <p className="tables-hint">This table is reserved.</p>
+                    )}
+
+                    {selectedMesa.estado_actual === 'Ocupada' && (
+                      <>
+                        {pedidoError && <p className="tables-hint">{pedidoError}</p>}
+                        {!pedidoError && !pedidoActual && <p className="tables-hint">Loading order...</p>}
+                        {pedidoActual && (
+                          <>
+                            <dl className="tables-info">
+                              <dt>Order</dt>
+                              <dd>#{String(pedidoActual.id_pedido).padStart(4, '0')}</dd>
+                              <dt>Waiter</dt>
+                              <dd>{pedidoActual.nombre_mesero}</dd>
+                              <dt>Opened</dt>
+                              <dd>{formatTime(pedidoActual.fecha_apertura)}</dd>
+                            </dl>
+
+                            {pedidoActual.lineas.length === 0 ? (
+                              <p className="tables-hint">No products in this order yet.</p>
+                            ) : (
+                              <table className="tables-lines">
+                                <thead>
+                                  <tr>
+                                    <th>Product</th>
+                                    <th>Qty</th>
+                                    <th>Subtotal</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {pedidoActual.lineas.map((l) => (
+                                    <tr key={l.id_detalle_pedido}>
+                                      <td>{l.nombre_producto}</td>
+                                      <td>{l.cantidad}</td>
+                                      <td>{money(l.subtotal)}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            )}
+
+                            <div className="tables-total">
+                              <span>Total</span>
+                              <strong>{money(pedidoActual.total)}</strong>
+                            </div>
+
+                            {onOpenOrder && (
+                              <button
+                                type="button"
+                                className="tables-btn-secondary"
+                                onClick={() => onOpenOrder(pedidoActual)}
+                              >
+                                View order
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </>
+                    )}
+                  </>
+                )}
+              </aside>
             </div>
           )}
         </>
@@ -223,6 +432,8 @@ const [toast, setToast] = useState(null);
           </div>
         </div>
       )}
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={closeToast} />}
     </div>
   );
 }
