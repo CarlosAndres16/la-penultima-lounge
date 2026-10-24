@@ -10,6 +10,18 @@ const EMPTY_FORM = {
   precio_venta: ''
 };
 
+// Values stored in the database for the product type (same values used by the test data)
+const PRODUCT_TYPES = [
+  'Cocktail',
+  'Signature cocktail',
+  'Beer',
+  'Liquor',
+  'Food',
+  'Non-alcoholic'
+];
+
+const COST_HIGHER_ERROR = 'The cost price cannot be higher than the sale price';
+
 export default function Catalog({ userRol, selectedSede }) {
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -91,6 +103,12 @@ export default function Catalog({ userRol, selectedSede }) {
       return;
     }
 
+    // The cost price can never be higher than the sale price (create and edit)
+    if (Number(formData.valor_compra) > Number(formData.precio_venta)) {
+      setError(COST_HIGHER_ERROR);
+      return;
+    }
+
     const token = localStorage.getItem('token');
     const isEdit = !!editingProduct;
 
@@ -169,6 +187,12 @@ export default function Catalog({ userRol, selectedSede }) {
       console.error(err);
     }
   };
+
+  // Product type options: the fixed list, plus the current type if it is not in the list (so it is not lost when editing)
+  const typeOptions =
+    formData.tipo_producto && !PRODUCT_TYPES.includes(formData.tipo_producto)
+      ? [...PRODUCT_TYPES, formData.tipo_producto]
+      : PRODUCT_TYPES;
 
   return (
     <div className="catalog-container">
@@ -265,22 +289,16 @@ export default function Catalog({ userRol, selectedSede }) {
 
               <div className="form-group">
                 <label>Product Type</label>
-                <input
-                  type="text"
-                  list="tipos-producto"
-                  placeholder="e.g. Cocktail, Beer..."
+                <select
                   value={formData.tipo_producto}
                   onChange={e => setFormData({...formData, tipo_producto: e.target.value})}
                   required
-                />
-                <datalist id="tipos-producto">
-                  <option value="Cocktail" />
-                  <option value="Signature cocktail" />
-                  <option value="Beer" />
-                  <option value="Liquor" />
-                  <option value="Food" />
-                  <option value="Non-alcoholic" />
-                </datalist>
+                >
+                  <option value="">Select a type...</option>
+                  {typeOptions.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="form-group">

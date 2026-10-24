@@ -15,6 +15,9 @@ const money = (n) => `$ ${Number(n || 0).toLocaleString('es-CO')}`;
  * it checks and discounts the stock in one atomic statement, so if two users ask for the same
  * product at once, the request that exceeds the remaining stock is rejected.
  *
+ * HU-24 CA-04: while the order is open, the Waiter (or Administrator) can remove a product line;
+ * the server gives the quantity back to the stock of the branch. A confirmation modal is shown first.
+ *
  * HU-26 / HU-27 / HU-28 / HU-29: the Cashier (or Administrator) closes the order, chooses the payment method
  * and gets the invoice.
  * An open order with no products can be cancelled to free the table again (customers changed their mind).
@@ -25,6 +28,7 @@ const money = (n) => `$ ${Number(n || 0).toLocaleString('es-CO')}`;
  */
 export default function OrderEntry({ order, userRol, onBack }) {
   const canAdd = userRol === 'Mesero' || userRol === 'Administrador';
+  const canRemove = canAdd; // HU-24 CA-04: same roles that add products
   const canClose = userRol === 'Cajero' || userRol === 'Administrador'; // HU-28
   const canCancel = userRol === 'Mesero' || userRol === 'Administrador'; // same roles that start orders (HU-22)
 
@@ -35,9 +39,11 @@ export default function OrderEntry({ order, userRol, onBack }) {
   const [orderClosed, setOrderClosed] = useState(false);
   const [quantities, setQuantities] = useState({});
   const [addingId, setAddingId] = useState(null);
+  const [removingId, setRemovingId] = useState(null); // line being removed (HU-24 CA-04)
   const [showClose, setShowClose] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [invoiceId, setInvoiceId] = useState(null); // invoice just issued when the order is closed
+  const [confirmDialog, setConfirmDialog] = useState(null); // { title, message, confirmLabel, onConfirm }
   const [toast, setToast] = useState(null);
   const closeToast = useCallback(() => setToast(null), []);
 
@@ -121,12 +127,39 @@ export default function OrderEntry({ order, userRol, onBack }) {
     }
   };
 
-  // Cancel an order that has no products and free the table
-  const handleCancelOrder = async () => {
-    if (!window.confirm(`Cancel this order and free table ${pedido.numero_mesa}?`)) {
-      return;
-    }
+  // HU-24 CA-04: remove a product line from the open order; the server restores the branch stock
+  const removeLine = async (linea) => {
+    setRemovingId(linea.id_detalle_pedido);
+    try {
+      const res = await fetch(`${API}/pedidos/${pedido.id_pedido}/items/${linea.id_detalle_pedido}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to remove the product');
 
+      setPedido(data);
+      setToast({ message: `${linea.nombre_producto} removed from the order`, type: 'success' });
+    } catch (err) {
+      setToast({ message: err.message, type: 'error' });
+      fetchPedido(); // the order may have changed (or been closed) in the meantime
+    } finally {
+      setRemovingId(null);
+      fetchProductos(); // show the stock that was given back
+    }
+  };
+
+  const handleRemoveLine = (linea) => {
+    setConfirmDialog({
+      title: 'Remove product',
+      message: `Remove ${linea.nombre_producto} (x${linea.cantidad}) from the order? The quantity will go back to the branch stock.`,
+      confirmLabel: 'Remove',
+      onConfirm: () => removeLine(linea),
+    });
+  };
+
+  // Cancel an order that has no products and free the table
+  const cancelOrder = async () => {
     setCancelling(true);
     try {
       const res = await fetch(`${API}/pedidos/${pedido.id_pedido}/cancelar`, {
@@ -143,7 +176,23 @@ export default function OrderEntry({ order, userRol, onBack }) {
     }
   };
 
+  const handleCancelOrder = () => {
+    setConfirmDialog({
+      title: 'Cancel order',
+      message: `Cancel this order and free table ${pedido.numero_mesa}?`,
+      confirmLabel: 'Cancel order',
+      onConfirm: cancelOrder,
+    });
+  };
+
+  const handleConfirmDialog = () => {
+    const action = confirmDialog?.onConfirm;
+    setConfirmDialog(null);
+    if (action) action();
+  };
+
   const lineas = pedido.lineas || [];
+  const showRemoveColumn = canRemove && !orderClosed;
 
   return (
     <div className="order-container">
@@ -233,6 +282,7 @@ export default function OrderEntry({ order, userRol, onBack }) {
                   <th>Qty</th>
                   <th>Unit price</th>
                   <th>Subtotal</th>
+                  {showRemoveColumn && <th></th>}
                 </tr>
               </thead>
               <tbody>
@@ -242,6 +292,20 @@ export default function OrderEntry({ order, userRol, onBack }) {
                     <td>{l.cantidad}</td>
                     <td>{money(l.precio_unitario)}</td>
                     <td>{money(l.subtotal)}</td>
+                    {showRemoveColumn && (
+                      <td>
+                        <button
+                          type="button"
+                          className="order-btn-secondary"
+                          onClick={() => handleRemoveLine(l)}
+                          disabled={removingId === l.id_detalle_pedido}
+                          aria-label={`Remove ${l.nombre_producto} from the order`}
+                          title="Remove from order"
+                        >
+                          {removingId === l.id_detalle_pedido ? '...' : '✕'}
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -295,6 +359,34 @@ export default function OrderEntry({ order, userRol, onBack }) {
             onBack(); // the table is free again: back to the tables map
           }}
         />
+      )}
+
+      {confirmDialog && (
+        <div className="billing-overlay" onClick={() => setConfirmDialog(null)}>
+          <div
+            className="billing-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="order-confirm-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="order-confirm-title">{confirmDialog.title}</h3>
+            <p className="billing-sub">{confirmDialog.message}</p>
+            <div className="billing-actions">
+              <button type="button" className="billing-btn" onClick={() => setConfirmDialog(null)}>
+                Keep
+              </button>
+              <button
+                type="button"
+                className="billing-btn billing-btn-primary"
+                onClick={handleConfirmDialog}
+                autoFocus
+              >
+                {confirmDialog.confirmLabel}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={closeToast} />}
