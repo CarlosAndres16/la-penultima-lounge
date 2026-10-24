@@ -6,6 +6,8 @@ const router = express.Router();
 const authMiddleware = requireAuth((text, params) => pool.query(text, params));
 const meseroOnly = requireRole(['Mesero', 'Administrador']);
 const meseroOrCajero = requireRole(['Mesero', 'Cajero', 'Administrador']);
+const cajeroOrAdmin = requireRole(['Cajero', 'Administrador']); // HU-28: the Cajero and the Administrador close orders
+const DEFAULT_CUSTOMER = 'Consumidor Final'; // HU-27 CA-02
 
 router.use(authMiddleware);
 
@@ -289,6 +291,113 @@ router.delete('/:idPedido/items/:idDetalle', meseroOnly, async (req, res) => {
     );
 
     return { status: 200, body: await getPedidoDetalle(client, idPedido) };
+  });
+});
+
+// POST /api/v1/pedidos/:idPedido/cancelar - Cancel an open order that has no products and free the table
+// Used when the customers change their mind before ordering anything. Orders with products cannot be
+// cancelled (their stock was already discounted); they must be closed instead.
+router.post('/:idPedido/cancelar', meseroOnly, async (req, res) => {
+  const idPedido = Number(req.params.idPedido);
+
+  if (!Number.isInteger(idPedido)) {
+    return res.status(400).json({ error: 'Invalid order id' });
+  }
+
+  await runInTransaction(res, 'cancelling order', async (client) => {
+    // Locks the order: a product cannot be added while it is being cancelled
+    const pedido = await lockPedidoAbierto(client, idPedido, req.user);
+
+    const lineasRes = await client.query(
+      'SELECT COUNT(*)::INT AS lineas FROM detalle_pedido WHERE id_pedido = $1',
+      [idPedido]
+    );
+    if (lineasRes.rows[0].lineas > 0) {
+      throw new HttpError(409, 'The order already has products and cannot be cancelled');
+    }
+
+    const pedidoRes = await client.query('DELETE FROM pedidos WHERE id_pedido = $1 RETURNING id_mesa', [idPedido]);
+    await client.query(`UPDATE mesas SET estado_actual = 'Libre' WHERE id_mesa = $1`, [pedidoRes.rows[0].id_mesa]);
+
+    await client.query(
+      `INSERT INTO audit_logs (usuario_id, tipo_operacion, detalles) VALUES ($1, $2, $3)`,
+      [req.user.id_usuario, 'CANCEL_ORDER', `Cancelled empty order ${idPedido} (table id ${pedidoRes.rows[0].id_mesa}, branch id ${pedido.id_sede})`]
+    );
+
+    return { status: 200, body: { message: 'Order cancelled and table freed', id_pedido: idPedido } };
+  });
+});
+
+// POST /api/v1/pedidos/:idPedido/cerrar - Close an open order, free the table and issue the invoice
+// (HU-26 payment method, HU-27 customer name, HU-28 close and free table, HU-29 invoice)
+// Body: { id_medio_pago, nombre_cliente (optional) }
+router.post('/:idPedido/cerrar', cajeroOrAdmin, async (req, res) => {
+  const idPedido = Number(req.params.idPedido);
+  const idMedioPago = Number(req.body?.id_medio_pago);
+  const nombreCliente = String(req.body?.nombre_cliente ?? '').trim();
+
+  if (!Number.isInteger(idPedido)) {
+    return res.status(400).json({ error: 'Invalid order id' });
+  }
+  if (!Number.isInteger(idMedioPago)) {
+    return res.status(400).json({ error: 'Select a payment method' });
+  }
+  if (nombreCliente.length > 100) {
+    return res.status(400).json({ error: 'Customer name must be 100 characters or fewer' });
+  }
+
+  await runInTransaction(res, 'closing order', async (client) => {
+    // Locks the order: two cashiers cannot close it twice (HU-28 CA-01)
+    const pedido = await lockPedidoAbierto(client, idPedido, req.user);
+
+    // Only the enabled payment methods are valid (HU-26 CA-01, CA-03)
+    const medioRes = await client.query(
+      `SELECT id_medio_pago FROM medios_pago WHERE id_medio_pago = $1 AND estado = 'Activo'`,
+      [idMedioPago]
+    );
+    if (medioRes.rows.length === 0) {
+      throw new HttpError(400, 'Select a valid payment method');
+    }
+
+    const lineasRes = await client.query(
+      'SELECT COUNT(*)::INT AS lineas FROM detalle_pedido WHERE id_pedido = $1',
+      [idPedido]
+    );
+    if (lineasRes.rows[0].lineas === 0) {
+      throw new HttpError(400, 'The order has no products. Add at least one product before closing it');
+    }
+
+    // Order -> Cerrado with cashier, closing date/time and payment method (HU-28 CA-01, CA-03)
+    const pedidoRes = await client.query(
+      `UPDATE pedidos
+       SET estado = 'Cerrado', fecha_cierre = CURRENT_TIMESTAMP, id_usuario_cajero = $1, id_medio_pago = $2
+       WHERE id_pedido = $3
+       RETURNING id_mesa`,
+      [req.user.id_usuario, idMedioPago, idPedido]
+    );
+    await client.query(`UPDATE mesas SET estado_actual = 'Libre' WHERE id_mesa = $1`, [pedidoRes.rows[0].id_mesa]);
+
+    // Invoice: the total is calculated here from the order lines, never trusted from the client.
+    // No tip is calculated (HU-29 CA-02). The consecutive number is the unique id_factura (HU-29 CA-01).
+    const facturaRes = await client.query(
+      `INSERT INTO facturas (id_pedido, id_medio_pago, nombre_cliente, total_venta)
+       SELECT $1::INT, $2::INT, $3::TEXT, COALESCE(SUM(subtotal), 0)
+       FROM detalle_pedido
+       WHERE id_pedido = $1::INT
+       RETURNING id_factura, total_venta::FLOAT8 AS total_venta`,
+      [idPedido, idMedioPago, nombreCliente || DEFAULT_CUSTOMER]
+    );
+    const factura = facturaRes.rows[0];
+
+    await client.query(
+      `INSERT INTO audit_logs (usuario_id, tipo_operacion, detalles) VALUES ($1, $2, $3)`,
+      [req.user.id_usuario, 'CLOSE_ORDER', `Closed order ${idPedido} (branch id ${pedido.id_sede}), invoice ${factura.id_factura}, total ${factura.total_venta}`]
+    );
+
+    return {
+      status: 201,
+      body: { id_factura: factura.id_factura, id_pedido: idPedido, total: factura.total_venta },
+    };
   });
 });
 

@@ -26,4 +26,14 @@ export const PRODUCT_TYPE_LABEL = {
   'No alcohólico': 'Non-alcoholic',
 };
 
+export const PAYMENT_METHOD_LABEL = {
+  Efectivo: 'Cash',
+  'Tarjeta Débito': 'Debit Card',
+  'Tarjeta Crédito': 'Credit Card',
+};
+
+export const CUSTOMER_LABEL = {
+  'Consumidor Final': 'Final Consumer',
+};
+
 export const t = (map, value) => map[value] ?? value;

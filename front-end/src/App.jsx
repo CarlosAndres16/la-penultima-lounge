@@ -7,6 +7,7 @@ import Tables from './components/Tables';
 import Sedes from './components/Sedes';
 import Restock from './components/Restock';
 import OrderEntry from './components/OrderEntry';
+import Invoices from './components/Invoices';
 import { t, ROLE_LABEL } from './i18n';
 import { logout } from './utils/auth';
 
@@ -92,6 +93,12 @@ function App() {
             </button>
           )}
 
+          {(user.rol === 'Administrador' || user.rol === 'Cajero') && (
+            <button onClick={() => setActiveTab('invoices')} style={tabStyle('invoices')}>
+              Closed Orders
+            </button>
+          )}
+
           {user.rol === 'Administrador' && (
             <> 
               <button onClick={() => setActiveTab('users')} style={tabStyle('users')}>Users</button>
@@ -137,6 +144,10 @@ function App() {
         )}
         {activeTab === 'sedes' && (
           <Sedes />
+        )}
+
+        {activeTab === 'invoices' && (user.rol === 'Administrador' || user.rol === 'Cajero') && (
+          <Invoices selectedSede={selectedSede} />
         )}
 
         {activeTab === 'restock' && (user.rol === 'Administrador' || user.rol === 'Cajero') && (

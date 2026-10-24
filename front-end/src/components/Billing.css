@@ -1,0 +1,295 @@
+/* HU-26 / HU-27 / HU-28 / HU-29: close order modal, invoice and closed orders list */
+
+.billing-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.75);
+  z-index: 1000;
+  overflow-y: auto;
+}
+
+.billing-modal,
+.invoice-modal {
+  width: 100%;
+  max-width: 440px;
+  padding: 1.5rem;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 10px;
+  color: #fff;
+}
+
+.billing-modal h3 {
+  margin: 0;
+  color: #d4af37;
+}
+
+.billing-sub {
+  margin: 0.25rem 0 1rem;
+  color: #9a9a9a;
+  font-size: 0.9rem;
+}
+
+.billing-error {
+  margin-bottom: 1rem;
+  padding: 0.7rem 0.9rem;
+  background: #2a1414;
+  border: 1px solid #b04040;
+  border-radius: 6px;
+  color: #f07a7a;
+  font-size: 0.9rem;
+}
+
+.billing-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.billing-group label {
+  color: #d4af37;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.billing-group input {
+  padding: 0.6rem 0.8rem;
+  background: #121212;
+  border: 1px solid #333;
+  border-radius: 6px;
+  color: #fff;
+}
+
+.billing-hint {
+  margin: 0.25rem 0 0;
+  color: #9a9a9a;
+  font-size: 0.9rem;
+}
+
+.billing-hint-bad {
+  color: #f07a7a;
+}
+
+.billing-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0.5rem 0 1.25rem;
+  padding: 0.8rem 1rem;
+  background: #121212;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  font-size: 1.1rem;
+}
+
+.billing-total strong {
+  color: #d4af37;
+}
+
+.billing-methods {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+}
+
+.billing-method {
+  padding: 1rem 0.5rem;
+  background: #121212;
+  color: #fff;
+  border: 1px solid #444;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.billing-method-selected {
+  border-color: #d4af37;
+  background: #2a2412;
+  color: #d4af37;
+  font-weight: 600;
+}
+
+.billing-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.billing-btn {
+  padding: 0.55rem 1.1rem;
+  background: #2a2a2a;
+  color: #fff;
+  border: 1px solid #444;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.billing-btn-primary {
+  background: #d4af37;
+  color: #000;
+  border: none;
+  font-weight: 600;
+}
+
+.billing-btn-small {
+  padding: 0.3rem 0.8rem;
+  font-size: 0.85rem;
+}
+
+.billing-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Invoice sheet (white paper) */
+.invoice-modal {
+  max-width: 460px;
+}
+
+.invoice-paper {
+  padding: 1.5rem;
+  background: #fff;
+  color: #111;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.invoice-head {
+  text-align: center;
+  line-height: 1.5;
+}
+
+.invoice-head h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1.3rem;
+}
+
+.invoice-lines {
+  width: 100%;
+  margin: 1rem 0;
+  border-collapse: collapse;
+}
+
+.invoice-lines th,
+.invoice-lines td {
+  padding: 0.4rem 0;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.invoice-lines th:nth-child(n + 2),
+.invoice-lines td:nth-child(n + 2) {
+  text-align: right;
+}
+
+.invoice-total {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.1rem;
+}
+
+.invoice-meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 1rem;
+  margin: 1rem 0 0;
+  font-size: 0.85rem;
+}
+
+.invoice-meta dt {
+  color: #666;
+}
+
+.invoice-meta dd {
+  margin: 0;
+  text-align: right;
+}
+
+/* Closed orders page */
+.billing-page {
+  max-width: 1100px;
+}
+
+.billing-page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.billing-page-head h2 {
+  margin: 0;
+}
+
+.billing-empty {
+  padding: 2rem;
+  text-align: center;
+  color: #9a9a9a;
+  background: #1a1a1a;
+  border: 1px dashed #333;
+  border-radius: 10px;
+}
+
+.billing-scroll {
+  overflow-x: auto;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 10px;
+}
+
+.billing-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.billing-table th {
+  padding: 0.9rem 1rem;
+  text-align: left;
+  color: #d4af37;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid #333;
+  white-space: nowrap;
+}
+
+.billing-table td {
+  padding: 0.7rem 1rem;
+  border-top: 1px solid #2a2a2a;
+}
+
+.billing-table .billing-num {
+  text-align: right;
+}
+
+/* Print only the invoice sheet */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .invoice-printable,
+  .invoice-printable * {
+    visibility: visible;
+  }
+
+  .invoice-printable {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}

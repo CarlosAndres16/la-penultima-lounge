@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import './OrderEntry.css';
 import Toast from './Toast';
+import CloseOrderModal from './CloseOrderModal';
+import Invoice from './Invoice';
 
 const API = 'http://localhost:3000/api/v1';
 const POLL_MS = 5000; // HU-23 CA-01: stock is re-read from the server every few seconds
@@ -13,12 +15,18 @@ const money = (n) => `$ ${Number(n || 0).toLocaleString('es-CO')}`;
  * it checks and discounts the stock in one atomic statement, so if two users ask for the same
  * product at once, the request that exceeds the remaining stock is rejected.
  *
+ * HU-26 / HU-27 / HU-28 / HU-29: the Cashier (or Administrator) closes the order, chooses the payment method
+ * and gets the invoice.
+ * An open order with no products can be cancelled to free the table again (customers changed their mind).
+ *
  * @param {Object} props.order - Order received from the table map (needs id_pedido, id_mesa, id_sede).
  * @param {string} props.userRol - Role of the logged-in user (only Waiter and Administrator can add products).
  * @param {Function} props.onBack - Returns to the table map.
  */
 export default function OrderEntry({ order, userRol, onBack }) {
   const canAdd = userRol === 'Mesero' || userRol === 'Administrador';
+  const canClose = userRol === 'Cajero' || userRol === 'Administrador'; // HU-28
+  const canCancel = userRol === 'Mesero' || userRol === 'Administrador'; // same roles that start orders (HU-22)
 
   const [pedido, setPedido] = useState(order);
   const [productos, setProductos] = useState([]);
@@ -27,6 +35,9 @@ export default function OrderEntry({ order, userRol, onBack }) {
   const [orderClosed, setOrderClosed] = useState(false);
   const [quantities, setQuantities] = useState({});
   const [addingId, setAddingId] = useState(null);
+  const [showClose, setShowClose] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [invoiceId, setInvoiceId] = useState(null); // invoice just issued when the order is closed
   const [toast, setToast] = useState(null);
   const closeToast = useCallback(() => setToast(null), []);
 
@@ -110,6 +121,28 @@ export default function OrderEntry({ order, userRol, onBack }) {
     }
   };
 
+  // Cancel an order that has no products and free the table
+  const handleCancelOrder = async () => {
+    if (!window.confirm(`Cancel this order and free table ${pedido.numero_mesa}?`)) {
+      return;
+    }
+
+    setCancelling(true);
+    try {
+      const res = await fetch(`${API}/pedidos/${pedido.id_pedido}/cancelar`, {
+        method: 'POST',
+        headers: authHeaders(),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to cancel the order');
+      onBack(); // the table is free again: back to the tables map
+    } catch (err) {
+      setToast({ message: err.message, type: 'error' });
+      setCancelling(false);
+      fetchPedido(); // the order may have received products in the meantime
+    }
+  };
+
   const lineas = pedido.lineas || [];
 
   return (
@@ -126,7 +159,7 @@ export default function OrderEntry({ order, userRol, onBack }) {
         </button>
       </div>
 
-      {orderClosed && (
+      {orderClosed && !invoiceId && (
         <div className="order-error">This order is no longer open. Go back to the tables map.</div>
       )}
       {pageError && !orderClosed && <div className="order-error">{pageError}</div>}
@@ -218,8 +251,51 @@ export default function OrderEntry({ order, userRol, onBack }) {
             <span>Total</span>
             <strong>{money(pedido.total)}</strong>
           </div>
+          {canCancel && !orderClosed && lineas.length === 0 && (
+            <button
+              type="button"
+              className="order-btn-secondary"
+              style={{ width: '100%', marginTop: '1rem' }}
+              onClick={handleCancelOrder}
+              disabled={cancelling}
+            >
+              {cancelling ? 'Cancelling...' : 'Cancel order and free table'}
+            </button>
+          )}
+          {canClose && !orderClosed && (
+            <button
+              type="button"
+              className="order-btn-primary"
+              style={{ width: '100%', marginTop: '1rem' }}
+              onClick={() => setShowClose(true)}
+              disabled={lineas.length === 0}
+            >
+              Close Order and Invoice
+            </button>
+          )}
         </section>
       </div>
+
+      {showClose && (
+        <CloseOrderModal
+          order={pedido}
+          onCancel={() => setShowClose(false)}
+          onClosed={(idFactura) => {
+            setShowClose(false);
+            setInvoiceId(idFactura);
+          }}
+        />
+      )}
+
+      {invoiceId !== null && (
+        <Invoice
+          idFactura={invoiceId}
+          onClose={() => {
+            setInvoiceId(null);
+            onBack(); // the table is free again: back to the tables map
+          }}
+        />
+      )}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={closeToast} />}
     </div>
