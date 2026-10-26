@@ -5,6 +5,8 @@ import { requireAuth, requireRole, requireSameSede } from '@lounge/common';
 const router = express.Router();
 const authMiddleware = requireAuth((text, params) => pool.query(text, params));
 const adminOnly = requireRole(['Administrador']);
+const tableStatusRoles = requireRole(['Mesero', 'Cajero', 'Administrador']);
+const MANUAL_TABLE_STATES = ['Libre', 'Reservada'];
 
 router.use(authMiddleware);
 
@@ -126,6 +128,66 @@ router.post('/:idSede/mesas', adminOnly, async (req, res) => {
     }
     console.error('Error creating table:', error);
     res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// PATCH /api/v1/sedes/:idSede/mesas/:idMesa/estado - Manually reserve a free table or release a reserved one
+// Body: { estado: 'Reservada' | 'Libre' }. 'Ocupada' is only set by the order flow (HU-22 / HU-28).
+router.patch('/:idSede/mesas/:idMesa/estado', requireSameSede, tableStatusRoles, async (req, res) => {
+  const idSede = Number(req.params.idSede);
+  const idMesa = Number(req.params.idMesa);
+  const nuevoEstado = req.body?.estado;
+
+  if (!Number.isInteger(idSede) || !Number.isInteger(idMesa)) {
+    return res.status(400).json({ error: 'Invalid branch or table id' });
+  }
+  if (!MANUAL_TABLE_STATES.includes(nuevoEstado)) {
+    return res.status(400).json({ error: 'Status must be Libre or Reservada' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Lock the table row so it cannot be taken by an order while its status is being changed
+    const mesaRes = await client.query(
+      'SELECT id_mesa, numero_mesa, estado_actual FROM mesas WHERE id_mesa = $1 AND id_sede = $2 FOR UPDATE',
+      [idMesa, idSede]
+    );
+    const mesa = mesaRes.rows[0];
+
+    if (!mesa) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Table not found' });
+    }
+    if (mesa.estado_actual === 'Ocupada') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'The table is occupied and its status cannot be changed manually' });
+    }
+    if (mesa.estado_actual === nuevoEstado) {
+      // Another user already made the same change: nothing to do
+      await client.query('ROLLBACK');
+      return res.json(mesa);
+    }
+
+    const updated = await client.query(
+      'UPDATE mesas SET estado_actual = $1 WHERE id_mesa = $2 RETURNING id_mesa, id_sede, numero_mesa, estado_actual',
+      [nuevoEstado, idMesa]
+    );
+
+    await client.query(
+      `INSERT INTO audit_logs (usuario_id, tipo_operacion, detalles) VALUES ($1, $2, $3)`,
+      [req.user.id_usuario, 'UPDATE_TABLE_STATUS', `Table ${mesa.numero_mesa} (branch id ${idSede}): ${mesa.estado_actual} -> ${nuevoEstado}`]
+    );
+
+    await client.query('COMMIT');
+    res.json(updated.rows[0]);
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('Error changing table status:', error);
+    res.status(500).json({ error: 'Internal error' });
+  } finally {
+    client.release();
   }
 });
 

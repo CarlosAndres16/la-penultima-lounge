@@ -6,6 +6,8 @@ const router = express.Router();
 const authMiddleware = requireAuth((text, params) => pool.query(text, params));
 const adminOnly = requireRole(['Administrador']);
 
+const COST_HIGHER_ERROR = 'The cost price cannot be higher than the sale price';
+
 router.use(authMiddleware);
 
 router.get('/', requireSameSede, async (req, res) => {
@@ -62,6 +64,11 @@ router.post('/', adminOnly, async (req, res) => {
 
   if (!id_proveedor || !nombre_producto || !tipo_producto || valor_compra == null || precio_venta == null) {
     return res.status(400).json({ error: 'This field is required' });
+  }
+
+  // The cost price can never be higher than the sale price
+  if (Number(valor_compra) > Number(precio_venta)) {
+    return res.status(400).json({ error: COST_HIGHER_ERROR });
   }
 
   if (Number(precio_venta) <= Number(valor_compra) && !confirmar) {
@@ -121,6 +128,11 @@ router.put('/:id', adminOnly, async (req, res) => {
 
   if (!id_proveedor || !nombre_producto || !tipo_producto || valor_compra == null || precio_venta == null) {
     return res.status(400).json({ error: 'This field is required' });
+  }
+
+  // The cost price can never be higher than the sale price
+  if (Number(valor_compra) > Number(precio_venta)) {
+    return res.status(400).json({ error: COST_HIGHER_ERROR });
   }
 
   try {

@@ -5,6 +5,9 @@ import UserManagement from './components/UserManagement';
 import Catalog from './components/Catalog';
 import Tables from './components/Tables';
 import Sedes from './components/Sedes';
+import Restock from './components/Restock';
+import OrderEntry from './components/OrderEntry';
+import Invoices from './components/Invoices';
 import { t, ROLE_LABEL } from './i18n';
 import { logout } from './utils/auth';
 
@@ -12,6 +15,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedSede, setSelectedSede] = useState('ALL');
+  const [activeOrder, setActiveOrder] = useState(null); // order being handled in the order screen (HU-22 / HU-23)
 
   // Load persisted user and map Spanish fields to English‑friendly aliases
   useEffect(() => {
@@ -43,6 +47,7 @@ function App() {
     }
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    setActiveOrder(null);
     setUser(null);
   };
 
@@ -82,6 +87,18 @@ function App() {
             Tables
           </button>
 
+          {(user.rol === 'Administrador' || user.rol === 'Cajero') && (
+            <button onClick={() => setActiveTab('restock')} style={tabStyle('restock')}>
+              Restock
+            </button>
+          )}
+
+          {(user.rol === 'Administrador' || user.rol === 'Cajero') && (
+            <button onClick={() => setActiveTab('invoices')} style={tabStyle('invoices')}>
+              Closed Orders
+            </button>
+          )}
+
           {user.rol === 'Administrador' && (
             <> 
               <button onClick={() => setActiveTab('users')} style={tabStyle('users')}>Users</button>
@@ -107,10 +124,34 @@ function App() {
         )}
 
         {activeTab === 'tables' && (
-          <Tables userRol={user.rol} selectedSede={selectedSede} />
+          <Tables
+            userRol={user.rol}
+            selectedSede={selectedSede}
+            onOpenOrder={(order) => {
+              setActiveOrder(order);
+              setActiveTab('order');
+            }}
+          />
+        )}
+
+        {activeTab === 'order' && activeOrder && (
+          <OrderEntry
+            key={activeOrder.id_pedido}
+            order={activeOrder}
+            userRol={user.rol}
+            onBack={() => setActiveTab('tables')}
+          />
         )}
         {activeTab === 'sedes' && (
           <Sedes />
+        )}
+
+        {activeTab === 'invoices' && (user.rol === 'Administrador' || user.rol === 'Cajero') && (
+          <Invoices selectedSede={selectedSede} />
+        )}
+
+        {activeTab === 'restock' && (user.rol === 'Administrador' || user.rol === 'Cajero') && (
+          <Restock userRol={user.rol} selectedSede={selectedSede} />
         )}
       </main>
     </div>

@@ -73,3 +73,43 @@ SELECT s.id_sede, LPAD(n::TEXT, 2, '0'), 'Libre'
 FROM sedes s
 CROSS JOIN generate_series(1, 6) AS n
 WHERE s.codigo_sede = 'SED-02';
+
+-- =====================================================
+-- Open orders for the tables seeded as 'Ocupada' (SED-01: tables 02 and 06)
+-- Keeps the table map (HU-21) consistent with orders and stock.
+-- =====================================================
+INSERT INTO pedidos (id_mesa, id_usuario_mesero, fecha_apertura, estado)
+SELECT m.id_mesa,
+       (SELECT id_usuario FROM usuarios WHERE username = 'mgomez'),
+       CURRENT_TIMESTAMP - CASE m.numero_mesa WHEN '02' THEN INTERVAL '40 minutes' ELSE INTERVAL '15 minutes' END,
+       'Abierto'
+FROM mesas m
+JOIN sedes s ON s.id_sede = m.id_sede
+WHERE s.codigo_sede = 'SED-01'
+  AND m.estado_actual = 'Ocupada';
+
+INSERT INTO detalle_pedido (id_pedido, id_producto, cantidad, precio_unitario, subtotal)
+SELECT ped.id_pedido, p.id_producto, l.cantidad, p.precio_venta, l.cantidad * p.precio_venta
+FROM (VALUES
+       ('02', 'PRD-118', 2),
+       ('02', 'PRD-204', 3),
+       ('06', 'PRD-101', 1),
+       ('06', 'PRD-205', 2)
+     ) AS l(numero_mesa, codigo_producto, cantidad)
+JOIN sedes s ON s.codigo_sede = 'SED-01'
+JOIN mesas m ON m.id_sede = s.id_sede AND m.numero_mesa = l.numero_mesa
+JOIN pedidos ped ON ped.id_mesa = m.id_mesa AND ped.estado = 'Abierto'
+JOIN productos p ON p.codigo_producto = l.codigo_producto;
+
+-- Products already placed in open orders are discounted from that branch's stock
+UPDATE inventario_sede i
+SET cantidad_disponible = i.cantidad_disponible - c.total
+FROM (
+  SELECT m.id_sede, d.id_producto, SUM(d.cantidad)::INT AS total
+  FROM detalle_pedido d
+  JOIN pedidos ped ON ped.id_pedido = d.id_pedido
+  JOIN mesas m ON m.id_mesa = ped.id_mesa
+  WHERE ped.estado = 'Abierto'
+  GROUP BY m.id_sede, d.id_producto
+) c
+WHERE i.id_sede = c.id_sede AND i.id_producto = c.id_producto;
