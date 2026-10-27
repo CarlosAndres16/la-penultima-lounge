@@ -1,0 +1,243 @@
+/* Reports & Shifts styling matching La Penúltima Lounge visual identity */
+
+.report-container {
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  padding: 1.5rem;
+  border: 1px solid #3d2c23;
+  color: #fff;
+}
+
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.report-header h2 {
+  color: #d4af37;
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+.report-subtitle {
+  color: #a89f91;
+  margin: 0.25rem 0 0;
+  font-size: 0.95rem;
+}
+
+.report-filters {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+  background-color: #141414;
+  padding: 1rem;
+  border-radius: 6px;
+  border: 1px solid #2e2621;
+}
+
+.report-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.report-filter-group label {
+  color: #a89f91;
+  font-size: 0.85rem;
+}
+
+.report-filter-group input,
+.report-filter-group select {
+  padding: 0.6rem 0.8rem;
+  background-color: #242424;
+  border: 1px solid #4a3b32;
+  color: #fff;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+
+.report-filter-group input:focus,
+.report-filter-group select:focus {
+  outline: none;
+  border-color: #d4af37;
+}
+
+.report-btn {
+  padding: 0.65rem 1.2rem;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.2s, background 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.report-btn-primary {
+  background-color: #d4af37;
+  color: #000;
+}
+
+.report-btn-primary:hover:not(:disabled) {
+  background-color: #c49f27;
+}
+
+.report-btn-excel {
+  background-color: #d4af37;
+  color: #1a1a1a;
+  border: 1px solid #d4af37;
+}
+
+.report-btn-excel:hover:not(:disabled) {
+  background-color: #e5c14d;
+}
+
+.report-btn-excel:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-color: #555;
+  color: #777;
+  background-color: #2a2a2a;
+}
+
+.report-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid #33261f;
+  border-radius: 6px;
+  margin-top: 1rem;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.95rem;
+}
+
+.report-table th {
+  background-color: #121212;
+  color: #a89f91;
+  padding: 0.85rem 1rem;
+  border-bottom: 2px solid #3d2c23;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 0.5px;
+}
+
+.report-table td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid #2a201b;
+  color: #eaeaea;
+}
+
+.report-table tr:hover {
+  background-color: #221c17;
+}
+
+.report-table tfoot td {
+  background-color: #141414;
+  font-weight: 700;
+  color: #d4af37;
+  border-top: 2px solid #d4af37;
+  border-bottom: none;
+}
+
+.report-empty {
+  padding: 2.5rem;
+  text-align: center;
+  color: #a89f91;
+  background-color: #141414;
+  border-radius: 6px;
+  border: 1px dashed #3d2c23;
+  margin: 1.5rem 0;
+}
+
+/* Status badges */
+.badge-status {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.badge-abierto {
+  background-color: rgba(212, 175, 55, 0.2);
+  color: #d4af37;
+  border: 1px solid #d4af37;
+}
+
+.badge-cerrado {
+  background-color: rgba(46, 125, 50, 0.2);
+  color: #66bb6a;
+  border: 1px solid #2e7d32;
+}
+
+/* Shifts split panel (list + lateral detail) */
+.shifts-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .shifts-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.shift-detail-panel {
+  background-color: #141414;
+  border: 1px solid #3d2c23;
+  border-radius: 6px;
+  padding: 1.25rem;
+  position: sticky;
+  top: 1rem;
+}
+
+.shift-detail-panel h3 {
+  margin: 0 0 1rem;
+  color: #d4af37;
+  font-size: 1.2rem;
+  border-bottom: 1px solid #2e2621;
+  padding-bottom: 0.5rem;
+}
+
+.shift-detail-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+  font-size: 0.9rem;
+}
+
+.shift-detail-item span.label {
+  color: #a89f91;
+}
+
+.shift-detail-item span.value {
+  color: #fff;
+  font-weight: 500;
+}
+
+.shift-detail-lines {
+  margin-top: 1rem;
+  border-top: 1px dashed #33261f;
+  padding-top: 0.8rem;
+}
+
+.shift-detail-line {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+}
+

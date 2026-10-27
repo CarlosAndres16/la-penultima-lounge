@@ -107,6 +107,151 @@ const lockPedidoAbierto = async (client, idPedido, user) => {
   return pedido;
 };
 
+// GET /api/v1/pedidos - List of orders with filters (HU-31 CA-01, CA-02, CA-03)
+// Filters: estado (Abierto/Cerrado), mesa, mesero, fechaInicio, fechaFin, sedeId
+router.get('/', meseroOrCajero, async (req, res) => {
+  try {
+    const { estado, mesa, mesero, fechaInicio, fechaFin, sedeId, busqueda } = req.query;
+
+    const conditions = [];
+    const params = [];
+
+    // Branch restriction: Cashier / Waiter sees only their assigned branch (HU-31 CA-03)
+    if (req.user.rol !== 'Administrador') {
+      params.push(req.user.id_sede);
+      conditions.push(`m.id_sede = $${params.length}`);
+    } else if (sedeId && sedeId !== 'ALL') {
+      const parsedSede = Number(sedeId);
+      if (Number.isInteger(parsedSede)) {
+        params.push(parsedSede);
+        conditions.push(`m.id_sede = $${params.length}`);
+      }
+    }
+
+    if (estado && estado !== 'Todos') {
+      params.push(estado);
+      conditions.push(`p.estado = $${params.length}`);
+    }
+
+    if (mesa && mesa.trim() !== '') {
+      params.push(`%${mesa.trim()}%`);
+      conditions.push(`m.numero_mesa ILIKE $${params.length}`);
+    }
+
+    if (mesero && mesero.trim() !== '') {
+      params.push(`%${mesero.trim()}%`);
+      conditions.push(`(u_mesero.nombre_completo ILIKE $${params.length} OR u_mesero.username ILIKE $${params.length})`);
+    }
+
+    if (busqueda && busqueda.trim() !== '') {
+      const n = Number(busqueda.replace('#', '').trim());
+      if (Number.isInteger(n) && n > 0) {
+        params.push(n);
+        conditions.push(`(p.id_pedido = $${params.length} OR m.numero_mesa ILIKE '%${busqueda.trim()}%')`);
+      } else {
+        params.push(`%${busqueda.trim()}%`);
+        conditions.push(`(m.numero_mesa ILIKE $${params.length} OR u_mesero.nombre_completo ILIKE $${params.length})`);
+      }
+    }
+
+    if (fechaInicio) {
+      params.push(`${fechaInicio} 00:00:00`);
+      conditions.push(`p.fecha_apertura >= $${params.length}`);
+    }
+
+    if (fechaFin) {
+      params.push(`${fechaFin} 23:59:59`);
+      conditions.push(`p.fecha_apertura <= $${params.length}`);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const query = `
+      SELECT p.id_pedido,
+             p.id_mesa,
+             m.numero_mesa,
+             m.id_sede,
+             s.codigo_sede,
+             s.nombre_sede,
+             p.estado,
+             p.fecha_apertura,
+             p.fecha_cierre,
+             p.id_usuario_mesero,
+             u_mesero.nombre_completo AS mesero,
+             p.id_usuario_cajero,
+             u_cajero.nombre_completo AS cajero,
+             mp.nombre_metodo AS medio_pago,
+             COALESCE((SELECT SUM(d.subtotal)::FLOAT8 FROM detalle_pedido d WHERE d.id_pedido = p.id_pedido), 0)::FLOAT8 AS total
+      FROM pedidos p
+      JOIN mesas m ON m.id_mesa = p.id_mesa
+      JOIN sedes s ON s.id_sede = m.id_sede
+      JOIN usuarios u_mesero ON u_mesero.id_usuario = p.id_usuario_mesero
+      LEFT JOIN usuarios u_cajero ON u_cajero.id_usuario = p.id_usuario_cajero
+      LEFT JOIN medios_pago mp ON mp.id_medio_pago = p.id_medio_pago
+      ${whereClause}
+      ORDER BY p.fecha_apertura DESC, p.id_pedido DESC
+    `;
+
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (error) {
+    sendError(res, error, 'listing shift orders');
+  }
+});
+
+// GET /api/v1/pedidos/:idPedido - Full detail of a specific order (HU-31 CA-02)
+router.get('/:idPedido', meseroOrCajero, async (req, res) => {
+  const idPedido = Number(req.params.idPedido);
+  if (!Number.isInteger(idPedido)) {
+    return res.status(400).json({ error: 'Invalid order id' });
+  }
+
+  try {
+    const cabecera = await pool.query(
+      `SELECT p.id_pedido, p.id_mesa, m.numero_mesa, m.id_sede, s.nombre_sede, p.estado,
+              p.fecha_apertura, p.fecha_cierre,
+              u_mesero.nombre_completo AS mesero,
+              u_cajero.nombre_completo AS cajero,
+              mp.nombre_metodo AS medio_pago
+       FROM pedidos p
+       JOIN mesas m ON m.id_mesa = p.id_mesa
+       JOIN sedes s ON s.id_sede = m.id_sede
+       JOIN usuarios u_mesero ON u_mesero.id_usuario = p.id_usuario_mesero
+       LEFT JOIN usuarios u_cajero ON u_cajero.id_usuario = p.id_usuario_cajero
+       LEFT JOIN medios_pago mp ON mp.id_medio_pago = p.id_medio_pago
+       WHERE p.id_pedido = $1`,
+      [idPedido]
+    );
+
+    if (cabecera.rows.length === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const pedido = cabecera.rows[0];
+    assertSameSede(req.user, pedido.id_sede);
+
+    const lineas = await pool.query(
+      `SELECT d.id_detalle_pedido, d.id_producto, pr.codigo_producto, pr.nombre_producto,
+              d.cantidad, d.precio_unitario::FLOAT8 AS precio_unitario, d.subtotal::FLOAT8 AS subtotal
+       FROM detalle_pedido d
+       JOIN productos pr ON pr.id_producto = d.id_producto
+       WHERE d.id_pedido = $1
+       ORDER BY d.id_detalle_pedido`,
+      [idPedido]
+    );
+
+    const total = lineas.rows.reduce((acc, l) => acc + l.subtotal, 0);
+
+    res.json({
+      ...pedido,
+      lineas: lineas.rows,
+      total: Math.round(total * 100) / 100
+    });
+  } catch (error) {
+    sendError(res, error, 'getting order detail');
+  }
+});
+
 // GET /api/v1/pedidos/mesa/:idMesa - Summary of the open order of a table (HU-21 CA-03)
 router.get('/mesa/:idMesa', meseroOrCajero, async (req, res) => {
   const idMesa = Number(req.params.idMesa);

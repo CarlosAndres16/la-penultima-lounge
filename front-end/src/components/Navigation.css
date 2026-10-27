@@ -1,0 +1,86 @@
+/* Navigation subheader and pill navigation styling */
+
+.app-subnav-container {
+  background: #181818;
+  border-bottom: 1px solid #2e2621;
+  padding: 0.75rem 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.app-subnav-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #3d2c23 transparent;
+  padding-bottom: 0.25rem;
+}
+
+.app-subnav-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #121212;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid #2a201b;
+  flex-shrink: 0;
+}
+
+.app-subnav-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #7d7265;
+  padding: 0 0.4rem;
+  user-select: none;
+}
+
+.app-nav-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.95rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #c9c2b5;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.app-nav-pill:hover {
+  background: #241d18;
+  color: #f2ede4;
+  border-color: #4a382c;
+}
+
+.app-nav-pill.active {
+  background: linear-gradient(135deg, #d4af37 0%, #b89325 100%);
+  color: #121212;
+  font-weight: 700;
+  border-color: #d4af37;
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.35);
+}
+
+.app-nav-pill .pill-icon {
+  font-size: 1rem;
+  display: inline-block;
+  opacity: 0.85;
+}
+
+.app-nav-pill.active .pill-icon {
+  opacity: 1;
+}
+
+.app-main-content {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+

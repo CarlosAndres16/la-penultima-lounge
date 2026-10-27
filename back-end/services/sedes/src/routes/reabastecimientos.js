@@ -176,4 +176,83 @@ router.post('/', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/v1/reabastecimientos/historico (HU-30)
+ * Query params:
+ *   - sedeId: id_sede or 'ALL' (Administrador only)
+ *   - fechaInicio: 'YYYY-MM-DD' (optional)
+ *   - fechaFin: 'YYYY-MM-DD' (optional)
+ *   - orden: 'ASC' | 'DESC' (default 'DESC')
+ * Returns restock audit list with date, product, quantity, unit cost, total value, branch and responsible user.
+ * Note: CA-03: records cannot be edited or deleted (no PUT/DELETE endpoints exist).
+ */
+router.get('/historico', async (req, res) => {
+  try {
+    const { sedeId, fechaInicio, fechaFin, orden, busqueda } = req.query;
+
+    const conditions = [];
+    const params = [];
+
+    // Branch filter: Cashier is restricted to their branch, Admin can filter by sede or see all
+    if (req.user.rol !== 'Administrador') {
+      params.push(req.user.id_sede);
+      conditions.push(`h.id_sede = $${params.length}`);
+    } else if (sedeId && sedeId !== 'ALL') {
+      const parsedSede = Number(sedeId);
+      if (Number.isInteger(parsedSede)) {
+        params.push(parsedSede);
+        conditions.push(`h.id_sede = $${params.length}`);
+      }
+    }
+
+    if (fechaInicio) {
+      params.push(`${fechaInicio} 00:00:00`);
+      conditions.push(`h.fecha_reabastecimiento >= $${params.length}`);
+    }
+
+    if (fechaFin) {
+      params.push(`${fechaFin} 23:59:59`);
+      conditions.push(`h.fecha_reabastecimiento <= $${params.length}`);
+    }
+
+    if (busqueda && busqueda.trim() !== '') {
+      params.push(`%${busqueda.trim()}%`);
+      conditions.push(`(pr.nombre_producto ILIKE $${params.length} OR pr.codigo_producto ILIKE $${params.length})`);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const orderDirection = String(orden).toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+    const query = `
+      SELECT h.id_reabastecimiento,
+             h.fecha_reabastecimiento,
+             pr.id_producto,
+             pr.codigo_producto,
+             pr.nombre_producto,
+             h.cantidad_ingresada AS cantidad,
+             COALESCE(h.valor_compra_unitario, pr.valor_compra)::FLOAT8 AS valor_compra_unitario,
+             COALESCE(h.valor_total, h.cantidad_ingresada * pr.valor_compra)::FLOAT8 AS valor_total,
+             s.id_sede,
+             s.codigo_sede,
+             s.nombre_sede,
+             u.id_usuario,
+             u.nombre_completo AS usuario_responsable,
+             pv.nombre_proveedor
+      FROM historial_reabastecimientos h
+      JOIN productos pr ON pr.id_producto = h.id_producto
+      JOIN sedes s ON s.id_sede = h.id_sede
+      JOIN usuarios u ON u.id_usuario = h.id_usuario
+      LEFT JOIN proveedores pv ON pv.id_proveedor = h.id_proveedor
+      ${whereClause}
+      ORDER BY h.fecha_reabastecimiento ${orderDirection}, h.id_reabastecimiento ${orderDirection}
+    `;
+
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching restock history:', error);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
 export default router;

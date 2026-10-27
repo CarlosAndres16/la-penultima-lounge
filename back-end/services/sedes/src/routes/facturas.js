@@ -55,18 +55,16 @@ router.get('/:idFactura', async (req, res) => {
 
   try {
     const cabecera = await pool.query(
-      `SELECT f.id_factura, f.id_pedido, f.fecha_emision, f.nombre_cliente,
-              f.total_venta::FLOAT8 AS total_venta, mp.nombre_metodo,
-              m.numero_mesa, s.id_sede, s.codigo_sede, s.nombre_sede,
-              uc.nombre_completo AS nombre_cajero
-       FROM facturas f
-       JOIN pedidos p ON p.id_pedido = f.id_pedido
-       JOIN mesas m ON m.id_mesa = p.id_mesa
-       JOIN sedes s ON s.id_sede = m.id_sede
-       JOIN medios_pago mp ON mp.id_medio_pago = f.id_medio_pago
-       LEFT JOIN usuarios uc ON uc.id_usuario = p.id_usuario_cajero
-       WHERE f.id_factura = $1`,
-      [idFactura]
+  `SELECT f.id_factura, f.id_pedido, f.fecha_emision, f.nombre_cliente,
+          f.total_venta::FLOAT8 AS total_venta, mp.nombre_metodo,
+          m.numero_mesa, s.id_sede, s.codigo_sede, s.nombre_sede
+   FROM facturas f
+   JOIN pedidos p ON p.id_pedido = f.id_pedido
+   JOIN mesas m ON m.id_mesa = p.id_mesa
+   JOIN sedes s ON s.id_sede = m.id_sede
+   JOIN medios_pago mp ON mp.id_medio_pago = f.id_medio_pago
+   WHERE f.id_factura = $1`,
+  [idFactura]
     );
     const factura = cabecera.rows[0];
 
