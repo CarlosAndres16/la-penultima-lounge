@@ -218,11 +218,11 @@ export default function OrderEntry({ order, userRol, onBack }) {
       await fetchProductos();
       setShowComboModal(false);
       setToast({
-        message: `Combo exacto de ${money(combo.valorTotal)} (${combo.items.length} productos) agregado a la orden`,
+        message: `Exact combo of ${money(combo.valorTotal)} (${combo.items.length} products) added to order`,
         type: 'success'
       });
     } catch (err) {
-      setToast({ message: `Error agregando combo: ${err.message}`, type: 'error' });
+      setToast({ message: `Failed to add combo: ${err.message}`, type: 'error' });
     } finally {
       setAddingCombo(false);
     }
@@ -248,7 +248,7 @@ export default function OrderEntry({ order, userRol, onBack }) {
               onClick={() => { setShowComboModal(true); if (!combosData) buscarCombosBacktracking(); }}
               style={{ borderColor: '#d4af37', color: '#d4af37', fontWeight: 600 }}
             >
-              ⚡ Sugerir Combo (Backtracking)
+              ⚡ Suggest Combo (Backtracking)
             </button>
           )}
           <button type="button" className="order-btn-secondary" onClick={onBack}>
@@ -398,18 +398,18 @@ export default function OrderEntry({ order, userRol, onBack }) {
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <h3 style={{ color: '#d4af37', margin: 0 }}>⚡ Sugerir Combo Exacto (Backtracking)</h3>
+              <h3 style={{ color: '#d4af37', margin: 0 }}>⚡ Suggest Exact Combo (Backtracking)</h3>
               <span style={{ fontSize: '0.75rem', background: 'rgba(212,175,55,0.15)', color: '#d4af37', padding: '0.2rem 0.5rem', borderRadius: '10px' }}>
-                Subset Sum con Poda O(2^N)
+                Subset Sum with Pruning O(2^N)
               </span>
             </div>
             <p className="billing-sub">
-              Ingresa el presupuesto o bono del cliente. El algoritmo explorará el catálogo con vuelta atrás y podas para hallar las combinaciones exactas.
+              Enter customer budget or voucher amount. The algorithm explores the catalog with backtracking and pruning to find exact combinations.
             </p>
 
             <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-end', marginBottom: '1rem' }}>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                <label style={{ fontSize: '0.8rem', color: '#a89f91' }}>Presupuesto Exacto ($):</label>
+                <label style={{ fontSize: '0.8rem', color: '#a89f91' }}>Exact Budget ($):</label>
                 <input
                   type="number"
                   step="1000"
@@ -425,7 +425,7 @@ export default function OrderEntry({ order, userRol, onBack }) {
                 disabled={loadingCombos || presupuestoCombo <= 0}
                 style={{ height: '38px', padding: '0 1rem' }}
               >
-                {loadingCombos ? 'Buscando...' : 'Buscar'}
+                {loadingCombos ? 'Searching...' : 'Search Combos'}
               </button>
             </div>
 
@@ -434,12 +434,12 @@ export default function OrderEntry({ order, userRol, onBack }) {
             {combosData && (
               <div>
                 <div style={{ fontSize: '0.8rem', color: '#a89f91', marginBottom: '0.5rem' }}>
-                  Encontradas: <strong style={{ color: '#fff' }}>{combosData.totalCombinacionesEncontradas} combinaciones</strong> ·
-                  Ramas podadas: <strong style={{ color: '#66bb6a' }}>{combosData.metricasAlgoritmo.eficienciaPoda}</strong>
+                  Found: <strong style={{ color: '#fff' }}>{combosData.totalCombinacionesEncontradas} combinations</strong> ·
+                  Pruned branches: <strong style={{ color: '#66bb6a' }}>{combosData.metricasAlgoritmo.eficienciaPoda}</strong>
                 </div>
 
                 {combosData.combinaciones.length === 0 ? (
-                  <p className="order-hint">No hay combinación de productos que sume exactamente {money(presupuestoCombo)}.</p>
+                  <p className="order-hint">No product combination matches exactly {money(presupuestoCombo)}.</p>
                 ) : (
                   <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid #2e2621', borderRadius: '4px' }}>
                     {combosData.combinaciones.map((c) => (
@@ -449,7 +449,7 @@ export default function OrderEntry({ order, userRol, onBack }) {
                       >
                         <div style={{ flex: 1, marginRight: '0.75rem' }}>
                           <div style={{ fontWeight: 600, color: '#d4af37', fontSize: '0.88rem' }}>
-                            Opción {c.comboId} — {money(c.valorTotal)}
+                            Option {c.comboId} — {money(c.valorTotal)}
                           </div>
                           <div style={{ fontSize: '0.8rem', color: '#c9c2b5', marginTop: '0.2rem' }}>
                             {c.items.map((it) => it.nombre).join(' + ')}
@@ -462,7 +462,7 @@ export default function OrderEntry({ order, userRol, onBack }) {
                           disabled={addingCombo}
                           style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
                         >
-                          {addingCombo ? '...' : '+ Agregar a Orden'}
+                          {addingCombo ? '...' : '+ Add to Order'}
                         </button>
                       </div>
                     ))}
@@ -473,7 +473,7 @@ export default function OrderEntry({ order, userRol, onBack }) {
 
             <div className="billing-actions" style={{ marginTop: '1rem' }}>
               <button type="button" className="billing-btn" onClick={() => setShowComboModal(false)}>
-                Cerrar
+                Close
               </button>
             </div>
           </div>

@@ -58,17 +58,17 @@ export default function CloseOrderModal({ order, onCancel, onClosed }) {
   useEffect(() => {
     if (isCash && change !== null && change > 0) {
       const denoms = [
-        { valor: 100000, tipo: 'Billete' },
-        { valor: 50000, tipo: 'Billete' },
-        { valor: 20000, tipo: 'Billete' },
-        { valor: 10000, tipo: 'Billete' },
-        { valor: 5000, tipo: 'Billete' },
-        { valor: 2000, tipo: 'Billete' },
-        { valor: 1000, tipo: 'Moneda / Billete' },
-        { valor: 500, tipo: 'Moneda' },
-        { valor: 200, tipo: 'Moneda' },
-        { valor: 100, tipo: 'Moneda' },
-        { valor: 50, tipo: 'Moneda' }
+        { valor: 100000, tipo: 'Bill' },
+        { valor: 50000, tipo: 'Bill' },
+        { valor: 20000, tipo: 'Bill' },
+        { valor: 10000, tipo: 'Bill' },
+        { valor: 5000, tipo: 'Bill' },
+        { valor: 2000, tipo: 'Bill' },
+        { valor: 1000, tipo: 'Coin / Bill' },
+        { valor: 500, tipo: 'Coin' },
+        { valor: 200, tipo: 'Coin' },
+        { valor: 100, tipo: 'Coin' },
+        { valor: 50, tipo: 'Coin' }
       ];
 
       let resto = Math.round(change);
@@ -199,15 +199,15 @@ export default function CloseOrderModal({ order, onCancel, onClosed }) {
                       Change to give back: <strong style={{ color: '#d4af37' }}>{money(change)}</strong>
                     </p>
 
-                    {/* Desglose Óptimo con Algoritmo Voraz */}
+                    {/* Optimal Breakdown with Greedy Algorithm */}
                     {vorazDesglose && vorazDesglose.items.length > 0 && (
                       <div style={{ background: '#121212', border: '1px solid #3d2c23', borderRadius: '6px', padding: '0.65rem 0.8rem', marginTop: '0.5rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
                           <span style={{ fontSize: '0.78rem', color: '#d4af37', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            ⚡ Desglose Voraz (Mínimo de piezas):
+                            ⚡ Greedy Breakdown (Minimum pieces):
                           </span>
                           <span style={{ fontSize: '0.75rem', background: '#d4af37', color: '#121212', padding: '0.1rem 0.45rem', borderRadius: '10px', fontWeight: 800 }}>
-                            {vorazDesglose.totalPiezas} {vorazDesglose.totalPiezas === 1 ? 'pieza' : 'piezas'}
+                            {vorazDesglose.totalPiezas} {vorazDesglose.totalPiezas === 1 ? 'piece' : 'pieces'}
                           </span>
                         </div>
                         <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>

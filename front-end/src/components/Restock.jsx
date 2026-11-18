@@ -135,7 +135,7 @@ export default function Restock({ userRol, selectedSede }) {
     setIdProducto(String(p.id_producto));
     setCantidad('1');
     setToast({
-      message: `Producto ${p.nombre} seleccionado para reabastecimiento`,
+      message: `Product ${p.nombre} selected for restock`,
       type: 'success'
     });
   };
@@ -155,29 +155,29 @@ export default function Restock({ userRol, selectedSede }) {
             onClick={() => setShowMochila(!showMochila)}
             style={{ borderColor: '#d4af37', color: '#d4af37', fontWeight: 600 }}
           >
-            {showMochila ? '✕ Ocultar Asistente Mochila' : '🎒 Asistente Mochila 0/1'}
+            {showMochila ? '✕ Hide Knapsack Assistant' : '🎒 Knapsack 0/1 Assistant'}
           </button>
         )}
       </div>
 
-      {/* Asistente Mochila (Knapsack 0/1) Integrado en Reabastecimiento */}
+      {/* Knapsack (0/1) Assistant Integrated in Restock */}
       {showMochila && canRestock && (
         <div style={{ background: '#141414', border: '1px solid #d4af37', borderRadius: '8px', padding: '1rem', marginBottom: '1.5rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
             <h4 style={{ color: '#d4af37', margin: 0 }}>
-              🎒 Optimizar Compra con Algoritmo de la Mochila (Knapsack 0/1)
+              🎒 Optimize Purchase with Knapsack 0/1 Algorithm
             </h4>
             <span style={{ fontSize: '0.75rem', color: '#66bb6a', background: 'rgba(102,187,106,0.15)', padding: '0.2rem 0.5rem', borderRadius: '10px' }}>
-              Programación Dinámica O(N*W)
+              Dynamic Programming O(N*W)
             </span>
           </div>
           <p style={{ color: '#a89f91', fontSize: '0.85rem', margin: '0 0 0.8rem' }}>
-            Ingresa el presupuesto total disponible para compras. El algoritmo seleccionará el conjunto óptimo de productos que maximiza el margen de ganancia proyectado sin exceder el presupuesto.
+            Enter total available purchase budget. The algorithm will select the optimal subset of products that maximizes projected profit margin without exceeding the budget.
           </p>
 
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: '0.8rem', color: '#c9c2b5' }}>Presupuesto de compra ($):</label>
+              <label style={{ fontSize: '0.8rem', color: '#c9c2b5' }}>Purchase budget ($):</label>
               <input
                 type="number"
                 step="5000"
@@ -193,7 +193,7 @@ export default function Restock({ userRol, selectedSede }) {
               disabled={loadingMochila || presupuestoMochila <= 0}
               style={{ height: '38px', padding: '0 1rem' }}
             >
-              {loadingMochila ? 'Optimizando...' : 'Calcular Compra Óptima'}
+              {loadingMochila ? 'Optimizing...' : 'Calculate Optimal Purchase'}
             </button>
           </div>
 
@@ -203,13 +203,13 @@ export default function Restock({ userRol, selectedSede }) {
             <div style={{ marginTop: '1rem', borderTop: '1px dashed #3d2c23', paddingTop: '0.8rem' }}>
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.8rem', fontSize: '0.85rem' }}>
                 <span style={{ color: '#a89f91' }}>
-                  Costo Total: <strong style={{ color: '#fff' }}>{money(resultadoMochila.mochila01_ProgramacionDinamica.costoUtilizado)}</strong>
+                  Total Cost: <strong style={{ color: '#fff' }}>{money(resultadoMochila.mochila01_ProgramacionDinamica.costoUtilizado)}</strong>
                 </span>
                 <span style={{ color: '#a89f91' }}>
-                  Ganancia Proyectada: <strong style={{ color: '#66bb6a' }}>{money(resultadoMochila.mochila01_ProgramacionDinamica.gananciaMaxima)}</strong>
+                  Projected Profit: <strong style={{ color: '#66bb6a' }}>{money(resultadoMochila.mochila01_ProgramacionDinamica.gananciaMaxima)}</strong>
                 </span>
                 <span style={{ color: '#a89f91' }}>
-                  Eficiencia Presupuesto: <strong style={{ color: '#d4af37' }}>{resultadoMochila.mochila01_ProgramacionDinamica.porcentajeUsoPresupuesto}</strong>
+                  Budget Efficiency: <strong style={{ color: '#d4af37' }}>{resultadoMochila.mochila01_ProgramacionDinamica.porcentajeUsoPresupuesto}</strong>
                 </span>
               </div>
 
@@ -217,10 +217,10 @@ export default function Restock({ userRol, selectedSede }) {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                   <thead>
                     <tr style={{ background: '#1c1713', color: '#a89f91', textAlign: 'left' }}>
-                      <th style={{ padding: '0.5rem' }}>Producto</th>
-                      <th style={{ padding: '0.5rem' }}>Costo Compra</th>
-                      <th style={{ padding: '0.5rem' }}>Ganancia</th>
-                      <th style={{ padding: '0.5rem', textAlign: 'right' }}>Acción</th>
+                      <th style={{ padding: '0.5rem' }}>Product</th>
+                      <th style={{ padding: '0.5rem' }}>Purchase Cost</th>
+                      <th style={{ padding: '0.5rem' }}>Profit</th>
+                      <th style={{ padding: '0.5rem', textAlign: 'right' }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -235,7 +235,7 @@ export default function Restock({ userRol, selectedSede }) {
                             onClick={() => seleccionarProductoDeMochila(item)}
                             style={{ background: '#d4af37', color: '#121212', border: 'none', padding: '0.2rem 0.5rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}
                           >
-                            Cargar en Formulario
+                            Load into Form
                           </button>
                         </td>
                       </tr>

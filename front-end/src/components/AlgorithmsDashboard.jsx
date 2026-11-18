@@ -2,13 +2,13 @@ import { useState } from 'react';
 import './AlgorithmsDashboard.css';
 
 const API = 'http://localhost:3000/api/v1';
-const money = (n) => `$ ${Number(n || 0).toLocaleString('es-CO')}`;
+const money = (n) => `$ ${Number(n || 0).toLocaleString('en-US')}`;
 
 export default function AlgorithmsDashboard() {
   const [activeSubTab, setActiveSubTab] = useState('voraz'); // 'voraz' | 'mochila' | 'backtracking'
 
   // ==========================================
-  // ESTADO: 1. ALGORITMO VORAZ
+  // STATE: 1. GREEDY ALGORITHM
   // ==========================================
   const [montoPagar, setMontoPagar] = useState(37500);
   const [montoRecibido, setMontoRecibido] = useState(100000);
@@ -29,7 +29,7 @@ export default function AlgorithmsDashboard() {
         body: JSON.stringify({ montoPagar, montoRecibido })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al ejecutar algoritmo voraz');
+      if (!res.ok) throw new Error(data.error || 'Failed to execute greedy algorithm');
       setResultadoVoraz(data);
     } catch (err) {
       setErrorVoraz(err.message);
@@ -39,7 +39,7 @@ export default function AlgorithmsDashboard() {
   };
 
   // ==========================================
-  // ESTADO: 2. PROBLEMA DE LA MOCHILA (KNAPSACK)
+  // STATE: 2. KNAPSACK PROBLEM
   // ==========================================
   const [presupuesto, setPresupuesto] = useState(150000);
   const [loadingMochila, setLoadingMochila] = useState(false);
@@ -59,7 +59,7 @@ export default function AlgorithmsDashboard() {
         body: JSON.stringify({ presupuesto, escala: 500 })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al ejecutar algoritmo de la mochila');
+      if (!res.ok) throw new Error(data.error || 'Failed to execute knapsack algorithm');
       setResultadoMochila(data);
     } catch (err) {
       setErrorMochila(err.message);
@@ -69,7 +69,7 @@ export default function AlgorithmsDashboard() {
   };
 
   // ==========================================
-  // ESTADO: 3. BACKTRACKING
+  // STATE: 3. BACKTRACKING
   // ==========================================
   const [subTipoBacktracking, setSubTipoBacktracking] = useState('combos'); // 'combos' | 'mesas'
   const [valorObjetivo, setValorObjetivo] = useState(25000);
@@ -99,7 +99,7 @@ export default function AlgorithmsDashboard() {
         body: JSON.stringify(payload)
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al ejecutar backtracking');
+      if (!res.ok) throw new Error(data.error || 'Failed to execute backtracking');
       setResultadoBacktrack(data);
     } catch (err) {
       setErrorBacktrack(err.message);
@@ -111,50 +111,50 @@ export default function AlgorithmsDashboard() {
   return (
     <div className="algo-container">
       <div className="algo-header">
-        <h2>Laboratorio de Algoritmos Clásicos</h2>
-        <p>Implementación teórica y funcional de Algoritmos Voraces, Problema de la Mochila y Backtracking en el sistema POS.</p>
+        <h2>Classical Algorithms Lab</h2>
+        <p>Theoretical and functional implementation of Greedy, 0/1 Knapsack, and Backtracking algorithms in the POS system.</p>
       </div>
 
-      {/* Subtabs de navegación */}
+      {/* Navigation Subtabs */}
       <div className="algo-subtabs">
         <button
           className={`algo-subtab-btn ${activeSubTab === 'voraz' ? 'active' : ''}`}
           onClick={() => setActiveSubTab('voraz')}
         >
-          1. Algoritmo Voraz (Greedy)
+          1. Greedy Algorithm
         </button>
         <button
           className={`algo-subtab-btn ${activeSubTab === 'mochila' ? 'active' : ''}`}
           onClick={() => setActiveSubTab('mochila')}
         >
-          2. Problema de la Mochila (Knapsack)
+          2. Knapsack Problem (0/1)
         </button>
         <button
           className={`algo-subtab-btn ${activeSubTab === 'backtracking' ? 'active' : ''}`}
           onClick={() => setActiveSubTab('backtracking')}
         >
-          3. Backtracking (Vuelta Atrás)
+          3. Backtracking
         </button>
       </div>
 
       {/* ============================================================== */}
-      {/* 1. SECCIÓN: ALGORITMO VORAZ                                   */}
+      {/* 1. SECTION: GREEDY ALGORITHM                                   */}
       {/* ============================================================== */}
       {activeSubTab === 'voraz' && (
         <div className="algo-card">
           <div className="algo-card-title">
-            <span>Desglose Óptimo de Cambio en Caja Registradora</span>
-            <span className="algo-theory-badge">Complejidad: O(D) tiempo | O(1) espacio</span>
+            <span>Optimal Cash Register Change Breakdown</span>
+            <span className="algo-theory-badge">Complexity: O(D) time | O(1) space</span>
           </div>
 
           <p style={{ color: '#a89f91', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
-            Aplica la <strong>Propiedad de Elección Voraz</strong>: en cada paso entrega la máxima cantidad posible de la
-            denominación de mayor valor restante, garantizando la entrega del menor número total de billetes y monedas.
+            Applies the <strong>Greedy Choice Property</strong>: at each step, delivers the maximum possible quantity of the
+            largest remaining denomination, guaranteeing the minimum total number of bills and coins.
           </p>
 
           <div className="algo-form-grid">
             <div className="algo-input-group">
-              <label>Total de la Cuenta / Factura ($):</label>
+              <label>Total Bill Amount ($):</label>
               <input
                 type="number"
                 step="50"
@@ -163,7 +163,7 @@ export default function AlgorithmsDashboard() {
               />
             </div>
             <div className="algo-input-group">
-              <label>Efectivo Recibido del Cliente ($):</label>
+              <label>Cash Received from Customer ($):</label>
               <input
                 type="number"
                 step="50"
@@ -177,7 +177,7 @@ export default function AlgorithmsDashboard() {
                 onClick={ejecutarVoraz}
                 disabled={loadingVoraz || montoRecibido < montoPagar}
               >
-                {loadingVoraz ? 'Calculando...' : 'Calcular Cambio Voraz'}
+                {loadingVoraz ? 'Calculating...' : 'Calculate Greedy Change'}
               </button>
             </div>
           </div>
@@ -188,24 +188,24 @@ export default function AlgorithmsDashboard() {
             <div style={{ marginTop: '1.5rem' }}>
               <div className="algo-stats-grid">
                 <div className="algo-stat-box">
-                  <div className="algo-stat-label">Cambio Total</div>
+                  <div className="algo-stat-label">Total Change</div>
                   <div className="algo-stat-value">{money(resultadoVoraz.cambioEntregado)}</div>
                 </div>
                 <div className="algo-stat-box">
-                  <div className="algo-stat-label">Total de Piezas</div>
+                  <div className="algo-stat-label">Total Pieces</div>
                   <div className="algo-stat-value green">{resultadoVoraz.totalPiezas}</div>
                 </div>
                 <div className="algo-stat-box">
-                  <div className="algo-stat-label">Denominaciones Usadas</div>
+                  <div className="algo-stat-label">Denominations Used</div>
                   <div className="algo-stat-value">{resultadoVoraz.desglose.length}</div>
                 </div>
               </div>
 
-              <h4 style={{ color: '#d4af37', margin: '1rem 0 0.5rem' }}>Desglose de Billetes y Monedas:</h4>
+              <h4 style={{ color: '#d4af37', margin: '1rem 0 0.5rem' }}>Bills and Coins Breakdown:</h4>
               <div className="algo-breakdown-grid">
                 {resultadoVoraz.desglose.map((p, idx) => (
                   <div key={idx} className="algo-piece-card">
-                    <span className="algo-piece-type">{p.tipo}</span>
+                    <span className="algo-piece-type">{p.tipo === 'Billete' ? 'Bill' : p.tipo === 'Moneda' ? 'Coin' : p.tipo}</span>
                     <div className="algo-piece-denom">{money(p.denominacion)}</div>
                     <span className="algo-piece-qty">{p.cantidad}x</span>
                     <div style={{ fontSize: '0.75rem', color: '#a89f91', marginTop: '0.3rem' }}>
@@ -216,9 +216,8 @@ export default function AlgorithmsDashboard() {
               </div>
 
               <div className="algo-theory-box">
-                <strong>Justificación Teórica del Algoritmo Voraz:</strong><br />
-                {resultadoVoraz.explicacion.propiedadEleccionVoraz} El sistema monetario nacional es un sistema canónico, lo cual
-                demuestra matemáticamente que la heurística voraz alcanza siempre la solución óptima global sin requerir búsqueda exhaustiva.
+                <strong>Theoretical Justification of the Greedy Algorithm:</strong><br />
+                {resultadoVoraz.explicacion?.propiedadEleccionVoraz || 'The national currency system is a canonical coin system, mathematically proving that the greedy heuristic always reaches the global optimal solution without exhaustive search.'}
               </div>
             </div>
           )}
@@ -226,24 +225,24 @@ export default function AlgorithmsDashboard() {
       )}
 
       {/* ============================================================== */}
-      {/* 2. SECCIÓN: PROBLEMA DE LA MOCHILA                            */}
+      {/* 2. SECTION: KNAPSACK PROBLEM (0/1)                             */}
       {/* ============================================================== */}
       {activeSubTab === 'mochila' && (
         <div className="algo-card">
           <div className="algo-card-title">
-            <span>Optimización de Presupuesto para Reabastecimiento de Inventario</span>
-            <span className="algo-theory-badge">Programación Dinámica: O(N * W)</span>
+            <span>Budget Optimization for Inventory Restocking</span>
+            <span className="algo-theory-badge">Dynamic Programming: O(N * W)</span>
           </div>
 
           <p style={{ color: '#a89f91', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
-            Modela la compra de mercancía como una <strong>Mochila 0/1</strong>. Capacidad de la mochila = <em>Presupuesto disponible</em>.
-            Peso de cada producto = <em>Costo de compra</em>. Valor de cada producto = <em>Ganancia proyectada</em> (Precio Venta - Costo).
-            Maximiza la ganancia total sin superar el límite de dinero.
+            Models merchandise purchase as a <strong>0/1 Knapsack</strong>. Knapsack capacity = <em>Available budget</em>.
+            Item weight = <em>Purchase cost</em>. Item value = <em>Projected profit</em> (Sale Price - Cost).
+            Maximizes total profit without exceeding the budget constraint.
           </p>
 
           <div className="algo-form-grid">
             <div className="algo-input-group">
-              <label>Presupuesto Disponible para Compras ($):</label>
+              <label>Available Purchase Budget ($):</label>
               <input
                 type="number"
                 step="5000"
@@ -257,7 +256,7 @@ export default function AlgorithmsDashboard() {
                 onClick={ejecutarMochila}
                 disabled={loadingMochila || presupuesto <= 0}
               >
-                {loadingMochila ? 'Optimizando...' : 'Optimizar Compra (Mochila 0/1)'}
+                {loadingMochila ? 'Optimizing...' : 'Optimize Purchase (0/1 Knapsack)'}
               </button>
             </div>
           </div>
@@ -268,33 +267,33 @@ export default function AlgorithmsDashboard() {
             <div style={{ marginTop: '1.5rem' }}>
               <div className="algo-stats-grid">
                 <div className="algo-stat-box">
-                  <div className="algo-stat-label">Presupuesto Utilizado</div>
+                  <div className="algo-stat-label">Used Budget</div>
                   <div className="algo-stat-value">{money(resultadoMochila.mochila01_ProgramacionDinamica.costoUtilizado)}</div>
                 </div>
                 <div className="algo-stat-box">
-                  <div className="algo-stat-label">Ganancia Máxima Proyectada</div>
+                  <div className="algo-stat-label">Max Projected Profit</div>
                   <div className="algo-stat-value green">{money(resultadoMochila.mochila01_ProgramacionDinamica.gananciaMaxima)}</div>
                 </div>
                 <div className="algo-stat-box">
-                  <div className="algo-stat-label">Eficiencia de Presupuesto</div>
+                  <div className="algo-stat-label">Budget Efficiency</div>
                   <div className="algo-stat-value">{resultadoMochila.mochila01_ProgramacionDinamica.porcentajeUsoPresupuesto}</div>
                 </div>
                 <div className="algo-stat-box">
-                  <div className="algo-stat-label">Productos Seleccionados</div>
+                  <div className="algo-stat-label">Selected Products</div>
                   <div className="algo-stat-value">{resultadoMochila.mochila01_ProgramacionDinamica.totalProductosSeleccionados}</div>
                 </div>
               </div>
 
-              <h4 style={{ color: '#d4af37', margin: '1rem 0 0.5rem' }}>Productos Seleccionados por Programación Dinámica (Mochila 0/1):</h4>
+              <h4 style={{ color: '#d4af37', margin: '1rem 0 0.5rem' }}>Selected Products via Dynamic Programming (0/1 Knapsack):</h4>
               <div className="algo-table-wrapper">
                 <table className="algo-table">
                   <thead>
                     <tr>
-                      <th>Código</th>
-                      <th>Producto</th>
-                      <th>Costo Compra (Peso)</th>
-                      <th>Precio Venta</th>
-                      <th>Ganancia Unitaria (Valor)</th>
+                      <th>Code</th>
+                      <th>Product</th>
+                      <th>Purchase Cost (Weight)</th>
+                      <th>Sale Price</th>
+                      <th>Unit Profit (Value)</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -312,9 +311,9 @@ export default function AlgorithmsDashboard() {
               </div>
 
               <div className="algo-theory-box">
-                <strong>Comparativa Académica: Mochila 0/1 (DP) vs. Mochila Fraccionaria (Voraz):</strong><br />
-                {resultadoMochila.comparativaTeorica.diferencia}<br />
-                Si se admitieran fracciones de productos, la estrategia voraz por densidad (ganancia/costo) generaría un techo teórico de{' '}
+                <strong>Academic Comparison: 0/1 Knapsack (DP) vs. Fractional Knapsack (Greedy):</strong><br />
+                {resultadoMochila.comparativaTeorica?.diferencia || '0/1 Knapsack requires Dynamic Programming because indivisible discrete items prevent purely greedy choices.'}<br />
+                If fractional product quantities were permitted, the greedy density strategy (profit / cost) would yield an upper theoretical profit of{' '}
                 <strong>{money(resultadoMochila.mochilaFraccionaria_EnfoqueVoraz.gananciaMaxima)}</strong>.
               </div>
             </div>
@@ -323,13 +322,13 @@ export default function AlgorithmsDashboard() {
       )}
 
       {/* ============================================================== */}
-      {/* 3. SECCIÓN: BACKTRACKING (VUELTA ATRÁS)                         */}
+      {/* 3. SECTION: BACKTRACKING                                       */}
       {/* ============================================================== */}
       {activeSubTab === 'backtracking' && (
         <div className="algo-card">
           <div className="algo-card-title">
-            <span>Búsqueda Exhaustiva con Vuelta Atrás y Poda (Backtracking)</span>
-            <span className="algo-theory-badge">Poda Bounding: Espacio O(2^N)</span>
+            <span>Exhaustive Search with Backtracking and Pruning</span>
+            <span className="algo-theory-badge">Bounding Pruning: Space O(2^N)</span>
           </div>
 
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem' }}>
@@ -337,26 +336,26 @@ export default function AlgorithmsDashboard() {
               className={`algo-subtab-btn ${subTipoBacktracking === 'combos' ? 'active' : ''}`}
               onClick={() => { setSubTipoBacktracking('combos'); setResultadoBacktrack(null); }}
             >
-              A) Combos y Cupones de Consumo Exacto (Subset Sum)
+              A) Exact Combos and Consumption Vouchers (Subset Sum)
             </button>
             <button
               className={`algo-subtab-btn ${subTipoBacktracking === 'mesas' ? 'active' : ''}`}
               onClick={() => { setSubTipoBacktracking('mesas'); setResultadoBacktrack(null); }}
             >
-              B) Asignación de Mesas con Restricciones (Constraint Satisfaction)
+              B) Table Seating with Constraints (Constraint Satisfaction)
             </button>
           </div>
 
           {subTipoBacktracking === 'combos' ? (
             <div>
               <p style={{ color: '#a89f91', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                Dado un presupuesto o cupón de consumo exacto, explora el árbol de combinaciones recursivamente.
-                Aplica <strong>podas de cota superior e inferior</strong> para descartar ramas no viables y realiza <em>rollback</em> para encontrar todas las combinaciones exactas posibles.
+                Given an exact customer budget or voucher, recursively explores the combination tree.
+                Applies <strong>upper and lower bound pruning</strong> to discard unviable branches and performs <em>rollback</em> to discover all exact valid combinations.
               </p>
 
               <div className="algo-form-grid">
                 <div className="algo-input-group">
-                  <label>Valor Exacto del Combo / Cupón ($):</label>
+                  <label>Exact Combo / Voucher Amount ($):</label>
                   <input
                     type="number"
                     step="1000"
@@ -370,7 +369,7 @@ export default function AlgorithmsDashboard() {
                     onClick={ejecutarBacktrack}
                     disabled={loadingBacktrack || valorObjetivo <= 0}
                   >
-                    {loadingBacktrack ? 'Explorando árbol...' : 'Generar Combos con Backtracking'}
+                    {loadingBacktrack ? 'Exploring tree...' : 'Generate Combos with Backtracking'}
                   </button>
                 </div>
               </div>
@@ -378,17 +377,17 @@ export default function AlgorithmsDashboard() {
           ) : (
             <div>
               <p style={{ color: '#a89f91', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                Asigna una lista de grupos de comensales a mesas libres disponibles considerando capacidades de cada mesa.
-                Si en algún punto una rama de asignación no puede completarse, retrocede (<em>backtrack</em>) al grupo previo para reintentar otra mesa válida.
+                Assigns a list of guest party sizes to available free tables considering the capacity of each table.
+                If an assignment branch cannot be fulfilled, it backtracks to the previous party to try an alternate valid table.
               </p>
 
               <div className="algo-form-grid">
                 <div className="algo-input-group" style={{ flex: 2 }}>
-                  <label>Tamaños de Grupos de Comensales (separados por coma):</label>
+                  <label>Guest Party Sizes (comma-separated):</label>
                   <input
                     type="text"
                     value={gruposMesas}
-                    placeholder="Ej: 4, 2, 6, 2"
+                    placeholder="e.g. 4, 2, 6, 2"
                     onChange={(e) => setGruposMesas(e.target.value)}
                   />
                 </div>
@@ -398,7 +397,7 @@ export default function AlgorithmsDashboard() {
                     onClick={ejecutarBacktrack}
                     disabled={loadingBacktrack}
                   >
-                    {loadingBacktrack ? 'Asignando mesas...' : 'Resolver Asignación con Backtracking'}
+                    {loadingBacktrack ? 'Assigning tables...' : 'Solve Seating with Backtracking'}
                   </button>
                 </div>
               </div>
@@ -411,44 +410,44 @@ export default function AlgorithmsDashboard() {
             <div style={{ marginTop: '1.5rem' }}>
               <div className="algo-stats-grid">
                 <div className="algo-stat-box">
-                  <div className="algo-stat-label">Combinaciones Exactas</div>
+                  <div className="algo-stat-label">Exact Combinations</div>
                   <div className="algo-stat-value green">{resultadoBacktrack.totalCombinacionesEncontradas}</div>
                 </div>
                 <div className="algo-stat-box">
-                  <div className="algo-stat-label">Llamadas Recursivas</div>
+                  <div className="algo-stat-label">Recursive Calls</div>
                   <div className="algo-stat-value">{resultadoBacktrack.metricasAlgoritmo.llamadasRecursivas}</div>
                 </div>
                 <div className="algo-stat-box">
-                  <div className="algo-stat-label">Ramas Podadas</div>
+                  <div className="algo-stat-label">Pruned Branches</div>
                   <div className="algo-stat-value">{resultadoBacktrack.metricasAlgoritmo.ramasPodadas}</div>
                 </div>
                 <div className="algo-stat-box">
-                  <div className="algo-stat-label">Eficiencia de Poda</div>
+                  <div className="algo-stat-label">Pruning Efficiency</div>
                   <div className="algo-stat-value">{resultadoBacktrack.metricasAlgoritmo.eficienciaPoda}</div>
                 </div>
               </div>
 
               <h4 style={{ color: '#d4af37', margin: '1rem 0 0.5rem' }}>
-                Combinaciones Exactas Encontradas ({resultadoBacktrack.totalCombinacionesEncontradas}):
+                Exact Combinations Found ({resultadoBacktrack.totalCombinacionesEncontradas}):
               </h4>
 
               {resultadoBacktrack.combinaciones.length === 0 ? (
-                <p style={{ color: '#a89f91' }}>No existe ninguna combinación de productos que sume exactamente {money(valorObjetivo)}.</p>
+                <p style={{ color: '#a89f91' }}>No product combination matches exactly {money(valorObjetivo)}.</p>
               ) : (
                 <div className="algo-table-wrapper">
                   <table className="algo-table">
                     <thead>
                       <tr>
                         <th>#</th>
-                        <th>Productos del Combo</th>
-                        <th>Cant. Productos</th>
-                        <th>Suma Exacta</th>
+                        <th>Combo Products</th>
+                        <th>Item Count</th>
+                        <th>Exact Sum</th>
                       </tr>
                     </thead>
                     <tbody>
                       {resultadoBacktrack.combinaciones.map((c) => (
                         <tr key={c.comboId}>
-                          <td><span className="algo-badge-combo">Opción {c.comboId}</span></td>
+                          <td><span className="algo-badge-combo">Option {c.comboId}</span></td>
                           <td>
                             {c.items.map((it, idx) => (
                               <span key={idx} style={{ display: 'inline-block', background: '#241d18', padding: '0.2rem 0.5rem', borderRadius: '4px', margin: '0.15rem 0.3rem 0.15rem 0', fontSize: '0.85rem' }}>
@@ -466,10 +465,10 @@ export default function AlgorithmsDashboard() {
               )}
 
               <div className="algo-theory-box">
-                <strong>Justificación de Backtracking:</strong><br />
-                El espacio de búsqueda exhaustivo es de {resultadoBacktrack.metricasAlgoritmo.espacioMaximoTeorico}.
-                Gracias a las <strong>podas tempranas</strong> (cuando la suma acumulada supera el objetivo o el sufijo restante no alcanza),
-                el algoritmo descartó ramas enteras sin evaluarlas, visitando solo {resultadoBacktrack.metricasAlgoritmo.llamadasRecursivas} estados.
+                <strong>Backtracking Justification:</strong><br />
+                The exhaustive search space is {resultadoBacktrack.metricasAlgoritmo.espacioMaximoTeorico}.
+                Thanks to <strong>early pruning</strong> (when accumulated sum exceeds target or remaining suffix sum falls short),
+                the algorithm discarded entire branches without evaluating them, visiting only {resultadoBacktrack.metricasAlgoritmo.llamadasRecursivas} states.
               </div>
             </div>
           )}
@@ -478,17 +477,17 @@ export default function AlgorithmsDashboard() {
             <div style={{ marginTop: '1.5rem' }}>
               <div className="algo-stats-grid">
                 <div className="algo-stat-box">
-                  <div className="algo-stat-label">Estado de Asignación</div>
+                  <div className="algo-stat-label">Assignment Status</div>
                   <div className={`algo-stat-value ${resultadoBacktrack.exito ? 'green' : ''}`}>
-                    {resultadoBacktrack.exito ? 'Éxito' : 'Conflicto'}
+                    {resultadoBacktrack.exito ? 'Success' : 'Conflict'}
                   </div>
                 </div>
                 <div className="algo-stat-box">
-                  <div className="algo-stat-label">Grupos Asignados</div>
+                  <div className="algo-stat-label">Assigned Groups</div>
                   <div className="algo-stat-value">{resultadoBacktrack.totalGrupos}</div>
                 </div>
                 <div className="algo-stat-box">
-                  <div className="algo-stat-label">Llamadas Backtracking</div>
+                  <div className="algo-stat-label">Backtracking Calls</div>
                   <div className="algo-stat-value">{resultadoBacktrack.llamadasRecursivas}</div>
                 </div>
               </div>
@@ -498,19 +497,19 @@ export default function AlgorithmsDashboard() {
                   <table className="algo-table">
                     <thead>
                       <tr>
-                        <th>Grupo #</th>
-                        <th>Comensales</th>
-                        <th>Mesa Asignada</th>
-                        <th>Capacidad Mesa</th>
+                        <th>Party #</th>
+                        <th>Guests</th>
+                        <th>Assigned Table</th>
+                        <th>Table Capacity</th>
                       </tr>
                     </thead>
                     <tbody>
                       {resultadoBacktrack.resultado.map((r) => (
                         <tr key={r.grupoId}>
-                          <td><strong>Grupo {r.grupoId}</strong></td>
-                          <td>{r.comensales} personas</td>
-                          <td><span className="algo-badge-combo">Mesa {r.numero_mesa}</span></td>
-                          <td>{r.capacidad} puestos</td>
+                          <td><strong>Party {r.grupoId}</strong></td>
+                          <td>{r.comensales} guests</td>
+                          <td><span className="algo-badge-combo">Table {r.numero_mesa}</span></td>
+                          <td>{r.capacidad} seats</td>
                         </tr>
                       ))}
                     </tbody>

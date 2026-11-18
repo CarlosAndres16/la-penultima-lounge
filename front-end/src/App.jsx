@@ -151,15 +151,15 @@ function App() {
             </div>
           )}
 
-          {/* Algoritmos Clásicos (Voraz, Mochila, Backtracking) */}
+          {/* Classic Algorithms (Greedy, Knapsack, Backtracking) */}
           {isCashierOrAdmin && (
             <div className="app-subnav-group">
-              <span className="app-subnav-label">Algoritmos</span>
+              <span className="app-subnav-label">Algorithms</span>
               <button
                 onClick={() => setActiveTab('algorithms')}
                 className={`app-nav-pill ${activeTab === 'algorithms' ? 'active' : ''}`}
               >
-                <span>Algoritmos Clásicos</span>
+                <span>Algorithms</span>
               </button>
             </div>
           )}

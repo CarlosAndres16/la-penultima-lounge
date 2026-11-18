@@ -39,30 +39,30 @@ router.post('/voraz-cambio', (req, res) => {
       return res.status(400).json({ error: 'El valor de cambio debe ser un número positivo válido' });
     }
 
-    // Denominaciones estándar de curso legal en Colombia
+    // Standard currency denominations
     const denominacionesDefault = [
-      { valor: 100000, tipo: 'Billete' },
-      { valor: 50000, tipo: 'Billete' },
-      { valor: 20000, tipo: 'Billete' },
-      { valor: 10000, tipo: 'Billete' },
-      { valor: 5000, tipo: 'Billete' },
-      { valor: 2000, tipo: 'Billete' },
-      { valor: 1000, tipo: 'Moneda / Billete' },
-      { valor: 500, tipo: 'Moneda' },
-      { valor: 200, tipo: 'Moneda' },
-      { valor: 100, tipo: 'Moneda' },
-      { valor: 50, tipo: 'Moneda' }
+      { valor: 100000, tipo: 'Bill' },
+      { valor: 50000, tipo: 'Bill' },
+      { valor: 20000, tipo: 'Bill' },
+      { valor: 10000, tipo: 'Bill' },
+      { valor: 5000, tipo: 'Bill' },
+      { valor: 2000, tipo: 'Bill' },
+      { valor: 1000, tipo: 'Coin / Bill' },
+      { valor: 500, tipo: 'Coin' },
+      { valor: 200, tipo: 'Coin' },
+      { valor: 100, tipo: 'Coin' },
+      { valor: 50, tipo: 'Coin' }
     ];
 
     let denominaciones = denominacionesDefault;
     if (Array.isArray(denominacionesPersonalizadas) && denominacionesPersonalizadas.length > 0) {
       denominaciones = denominacionesPersonalizadas
-        .map((d) => (typeof d === 'number' ? { valor: d, tipo: d >= 2000 ? 'Billete' : 'Moneda' } : d))
+        .map((d) => (typeof d === 'number' ? { valor: d, tipo: d >= 2000 ? 'Bill' : 'Coin' } : d))
         .filter((d) => d.valor > 0)
         .sort((a, b) => b.valor - a.valor);
     }
 
-    // Ejecución Voraz
+    // Greedy execution
     let restante = Math.round(cambioTotal);
     const desglose = [];
     const pasos = [];
@@ -84,7 +84,7 @@ router.post('/voraz-cambio', (req, res) => {
 
         pasos.push({
           denominacion: d.valor,
-          decisionVoraz: `Tomar ${cantidad} ${d.tipo.toLowerCase()}(s) de $${d.valor.toLocaleString('es-CO')}`,
+          decisionVoraz: `Take ${cantidad} ${d.tipo.toLowerCase()}(s) of $${d.valor.toLocaleString('en-US')}`,
           subtotal,
           restantePendiente: restante
         });
@@ -92,8 +92,8 @@ router.post('/voraz-cambio', (req, res) => {
     }
 
     res.json({
-      algoritmo: 'Voraz (Greedy)',
-      categoria: 'Optimización de Cambio en Caja POS',
+      algoritmo: 'Greedy',
+      categoria: 'POS Cash Register Change Optimization',
       montoSolicitado: cambioTotal,
       cambioEntregado: cambioTotal - restante,
       residuoNoEntregable: restante,
@@ -101,9 +101,9 @@ router.post('/voraz-cambio', (req, res) => {
       desglose,
       pasos,
       explicacion: {
-        propiedadEleccionVoraz: 'En cada paso se tomó la mayor denominación disponible menor o igual al saldo restante.',
-        subestructuraOptima: 'Cada sub-saldo se resuelve con la combinación óptima de denominaciones menores.',
-        complejidadTemporal: `O(${denominaciones.length}) iteraciones (casi O(1))`
+        propiedadEleccionVoraz: 'At each step, the largest available denomination less than or equal to the remaining balance was taken.',
+        subestructuraOptima: 'Each sub-balance is solved with the optimal combination of smaller denominations.',
+        complejidadTemporal: `O(${denominaciones.length}) iterations (almost O(1))`
       }
     });
   } catch (error) {
@@ -254,8 +254,8 @@ router.post('/mochila-presupuesto', async (req, res) => {
     }
 
     res.json({
-      algoritmo: 'Problema de la Mochila (Knapsack Problem)',
-      categoria: 'Optimización de Presupuesto para Compras e Inventario',
+      algoritmo: 'Knapsack Problem',
+      categoria: 'Purchasing and Inventory Budget Optimization',
       presupuestoTotal: capacidadPresupuesto,
       mochila01_ProgramacionDinamica: {
         costoUtilizado: costoTotal01,
@@ -264,17 +264,17 @@ router.post('/mochila-presupuesto', async (req, res) => {
         porcentajeUsoPresupuesto: `${Math.round((costoTotal01 / capacidadPresupuesto) * 100)}%`,
         totalProductosSeleccionados: seleccionados01.length,
         itemsSeleccionados: seleccionados01,
-        complejidad: `O(N * W) -> O(${n} * ${W_scaled}) en tiempo y espacio`
+        complejidad: `O(N * W) -> O(${n} * ${W_scaled}) in time and space`
       },
       mochilaFraccionaria_EnfoqueVoraz: {
         costoUtilizado: capacidadPresupuesto - presupuestoRestanteVoraz,
         gananciaMaxima: gananciaTotalVoraz,
         totalItemsConsiderados: seleccionadosVoraz.length,
         itemsSeleccionados: seleccionadosVoraz,
-        complejidad: `O(N log N) por ordenamiento voraz de ratios`
+        complejidad: `O(N log N) by greedy sorting of value-to-cost ratios`
       },
       comparativaTeorica: {
-        diferencia: 'La Mochila 0/1 no admite fracciones y requiere Programación Dinámica para garantizar el óptimo global. La Mochila Fraccionaria sí cumple la propiedad voraz ordenando por densidad de valor/costo.'
+        diferencia: '0/1 Knapsack does not permit fractions and requires Dynamic Programming to guarantee the global optimum. Fractional Knapsack satisfies the greedy choice property by ordering by value/cost density.'
       }
     });
   } catch (error) {
@@ -394,16 +394,16 @@ router.post('/backtracking-combos', async (req, res) => {
     backtrack(0, 0, []);
 
     res.json({
-      algoritmo: 'Backtracking (Vuelta Atrás con Poda)',
-      categoria: 'Generador de Combos Exactos y Cupones de Consumo (Subset Sum)',
+      algoritmo: 'Backtracking with Pruning',
+      categoria: 'Exact Combos and Consumption Vouchers Generator (Subset Sum)',
       valorObjetivo: objetivo,
       totalProductosAnalizados: n,
       totalCombinacionesEncontradas: combinacionesExactas.length,
       metricasAlgoritmo: {
         llamadasRecursivas,
         ramasPodadas,
-        espacioMaximoTeorico: `2^${n} = ${Math.pow(2, Math.min(n, 30)).toLocaleString()} posibles ramas`,
-        eficienciaPoda: `${Math.round((ramasPodadas / (llamadasRecursivas + ramasPodadas || 1)) * 100)}% de ramas podadas`
+        espacioMaximoTeorico: `2^${n} = ${Math.pow(2, Math.min(n, 30)).toLocaleString()} candidate branches`,
+        eficienciaPoda: `${Math.round((ramasPodadas / (llamadasRecursivas + ramasPodadas || 1)) * 100)}% of branches pruned`
       },
       combinaciones: combinacionesExactas.map((c, i) => ({
         comboId: i + 1,
@@ -505,7 +505,7 @@ router.post('/backtracking-mesas', async (req, res) => {
     const exito = asignar(0);
 
     res.json({
-      algoritmo: 'Backtracking (Asignación con Restricciones)',
+      algoritmo: 'Backtracking (Constraint Satisfaction Table Assignment)',
       exito,
       totalGrupos: grupos.length,
       totalMesasEvaluadas: mesas.length,
@@ -517,8 +517,8 @@ router.post('/backtracking-mesas', async (req, res) => {
           }))
         : null,
       mensaje: exito
-        ? 'Asignación completada exitosamente sin conflictos'
-        : 'No fue posible asignar todos los grupos con las mesas y restricciones actuales'
+        ? 'Assignment completed successfully with zero conflicts'
+        : 'Could not assign all groups with current tables and capacity constraints'
     });
   } catch (error) {
     console.error('Error en backtracking de mesas:', error);

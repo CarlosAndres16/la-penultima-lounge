@@ -217,7 +217,7 @@ export default function Tables({ userRol, selectedSede, onOpenOrder }) {
     }
   };
 
-  // Asignación asistida con Backtracking
+  // Assisted assignment with Backtracking
   const ejecutarBacktrackMesas = async () => {
     setLoadingBacktrack(true);
     setErrorBacktrack('');
@@ -231,18 +231,18 @@ export default function Tables({ userRol, selectedSede, onOpenOrder }) {
         })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al ejecutar backtracking');
+      if (!res.ok) throw new Error(data.error || 'Failed to run backtracking');
 
       if (data.exito && data.resultado && data.resultado.length > 0) {
         const asignada = data.resultado[0];
         setSelectedId(asignada.mesaId);
         setShowBacktrackModal(false);
         setToast({
-          message: `Mesa ${asignada.numero_mesa} (capacidad ${asignada.capacidad}) asignada para ${comensalesBacktrack} personas con Backtracking`,
+          message: `Table ${asignada.numero_mesa} (capacity ${asignada.capacidad}) assigned for ${comensalesBacktrack} guests using Backtracking`,
           type: 'success'
         });
       } else {
-        setErrorBacktrack(data.mensaje || 'No hay mesa disponible para este grupo.');
+        setErrorBacktrack(data.mensaje || 'No table available for this group.');
       }
     } catch (err) {
       setErrorBacktrack(err.message);
@@ -322,7 +322,7 @@ export default function Tables({ userRol, selectedSede, onOpenOrder }) {
               onClick={() => { setShowBacktrackModal(true); setErrorBacktrack(''); }}
               style={{ borderColor: '#d4af37', color: '#d4af37', fontWeight: 600, padding: '0.5rem 0.85rem', whiteSpace: 'nowrap' }}
             >
-              ⚡ Ubicar Grupo (Backtracking)
+              ⚡ Seat Group (Backtracking)
             </button>
           </div>
 
@@ -531,19 +531,19 @@ export default function Tables({ userRol, selectedSede, onOpenOrder }) {
         <div className="tables-overlay" onClick={() => setShowBacktrackModal(false)}>
           <div className="tables-modal" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <h3 style={{ margin: 0, color: '#d4af37' }}>⚡ Ubicación Asistida (Backtracking)</h3>
+              <h3 style={{ margin: 0, color: '#d4af37' }}>⚡ Assisted Seating (Backtracking)</h3>
               <span style={{ fontSize: '0.75rem', background: 'rgba(212,175,55,0.15)', color: '#d4af37', padding: '0.2rem 0.5rem', borderRadius: '10px' }}>
                 Constraint Satisfaction
               </span>
             </div>
             <p className="tables-hint" style={{ margin: '0 0 1rem' }}>
-              Ingresa el número de comensales. El algoritmo de vuelta atrás evaluará las mesas libres de la sede y seleccionará la mesa óptima sin conflictos de capacidad.
+              Enter the number of guests. The backtracking algorithm evaluates available free tables in this branch and selects the optimal table with zero capacity conflicts.
             </p>
 
             {errorBacktrack && <div className="tables-error">{errorBacktrack}</div>}
 
             <div className="tables-form-group">
-              <label>Cantidad de Comensales:</label>
+              <label>Number of Guests:</label>
               <input
                 type="number"
                 min="1"
@@ -556,7 +556,7 @@ export default function Tables({ userRol, selectedSede, onOpenOrder }) {
 
             <div className="tables-modal-actions">
               <button type="button" className="tables-btn-secondary" onClick={() => setShowBacktrackModal(false)}>
-                Cancelar
+                Cancel
               </button>
               <button
                 type="button"
@@ -564,7 +564,7 @@ export default function Tables({ userRol, selectedSede, onOpenOrder }) {
                 onClick={ejecutarBacktrackMesas}
                 disabled={loadingBacktrack || comensalesBacktrack <= 0}
               >
-                {loadingBacktrack ? 'Buscando mesa...' : 'Asignar Mesa'}
+                {loadingBacktrack ? 'Finding table...' : 'Assign Table'}
               </button>
             </div>
           </div>
