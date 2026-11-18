@@ -10,6 +10,7 @@ import RestockHistory from './components/RestockHistory';
 import ShiftOrders from './components/ShiftOrders';
 import SalesReport from './components/SalesReport';
 import ConsolidatedReport from './components/ConsolidatedReport';
+import AlgorithmsDashboard from './components/AlgorithmsDashboard';
 import OrderEntry from './components/OrderEntry';
 import Invoices from './components/Invoices';
 import { t, ROLE_LABEL } from './i18n';
@@ -150,6 +151,19 @@ function App() {
             </div>
           )}
 
+          {/* Algoritmos Clásicos (Voraz, Mochila, Backtracking) */}
+          {isCashierOrAdmin && (
+            <div className="app-subnav-group">
+              <span className="app-subnav-label">Algoritmos</span>
+              <button
+                onClick={() => setActiveTab('algorithms')}
+                className={`app-nav-pill ${activeTab === 'algorithms' ? 'active' : ''}`}
+              >
+                <span>Algoritmos Clásicos</span>
+              </button>
+            </div>
+          )}
+
           {/* Administration Group */}
           {isAdmin && (
             <div className="app-subnav-group">
@@ -242,6 +256,11 @@ function App() {
         {/* HU-34 */}
         {activeTab === 'consolidated' && isAdmin && (
           <ConsolidatedReport />
+        )}
+
+        {/* Módulo de Algoritmos (Voraz, Mochila, Backtracking) */}
+        {activeTab === 'algorithms' && isCashierOrAdmin && (
+          <AlgorithmsDashboard />
         )}
       </main>
     </div>

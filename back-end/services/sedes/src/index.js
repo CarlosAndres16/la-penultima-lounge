@@ -8,6 +8,7 @@ import pedidosRouter from './routes/pedidos.js';
 import mediosPagoRouter from './routes/medios-pago.js';
 import facturasRouter from './routes/facturas.js';
 import reportesRouter from './routes/reportes.js';
+import algoritmosRouter from './routes/algoritmos.js';
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -27,5 +28,6 @@ app.use('/api/v1/pedidos', pedidosRouter);
 app.use('/api/v1/medios-pago', mediosPagoRouter);
 app.use('/api/v1/facturas', facturasRouter);
 app.use('/api/v1/reportes', reportesRouter);
+app.use('/api/v1/algoritmos', algoritmosRouter);
 
 app.listen(PORT, () => console.log(`sedes escuchando en el puerto ${PORT}`));

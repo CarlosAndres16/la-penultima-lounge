@@ -43,6 +43,12 @@ export default function Tables({ userRol, selectedSede, onOpenOrder }) {
   const [changingStatus, setChangingStatus] = useState(false);
   const [tick, setTick] = useState(0);
 
+  // Backtracking Seating State
+  const [showBacktrackModal, setShowBacktrackModal] = useState(false);
+  const [comensalesBacktrack, setComensalesBacktrack] = useState(4);
+  const [loadingBacktrack, setLoadingBacktrack] = useState(false);
+  const [errorBacktrack, setErrorBacktrack] = useState('');
+
   const isAdmin = userRol === 'Administrador';
   // Waiter and Administrator can start orders (HU-22)
   const canStartOrder = userRol === 'Mesero' || isAdmin;
@@ -211,6 +217,40 @@ export default function Tables({ userRol, selectedSede, onOpenOrder }) {
     }
   };
 
+  // Asignación asistida con Backtracking
+  const ejecutarBacktrackMesas = async () => {
+    setLoadingBacktrack(true);
+    setErrorBacktrack('');
+    try {
+      const res = await fetch(`${API}/algoritmos/backtracking-mesas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({
+          gruposComensales: [Number(comensalesBacktrack) || 2],
+          sedeId: selectedSede
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al ejecutar backtracking');
+
+      if (data.exito && data.resultado && data.resultado.length > 0) {
+        const asignada = data.resultado[0];
+        setSelectedId(asignada.mesaId);
+        setShowBacktrackModal(false);
+        setToast({
+          message: `Mesa ${asignada.numero_mesa} (capacidad ${asignada.capacidad}) asignada para ${comensalesBacktrack} personas con Backtracking`,
+          type: 'success'
+        });
+      } else {
+        setErrorBacktrack(data.mensaje || 'No hay mesa disponible para este grupo.');
+      }
+    } catch (err) {
+      setErrorBacktrack(err.message);
+    } finally {
+      setLoadingBacktrack(false);
+    }
+  };
+
   // Reserve a free table or release a reserved one (Waiter, Cashier and Administrator)
   const handleChangeStatus = async (nuevoEstado) => {
     if (!selectedMesa) return;
@@ -268,7 +308,7 @@ export default function Tables({ userRol, selectedSede, onOpenOrder }) {
         </div>
       ) : (
         <>
-          <div className="tables-filters">
+          <div className="tables-filters" style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
             <input
               type="text"
               placeholder="Search table..."
@@ -276,6 +316,14 @@ export default function Tables({ userRol, selectedSede, onOpenOrder }) {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="tables-search"
             />
+            <button
+              type="button"
+              className="tables-btn-secondary"
+              onClick={() => { setShowBacktrackModal(true); setErrorBacktrack(''); }}
+              style={{ borderColor: '#d4af37', color: '#d4af37', fontWeight: 600, padding: '0.5rem 0.85rem', whiteSpace: 'nowrap' }}
+            >
+              ⚡ Ubicar Grupo (Backtracking)
+            </button>
           </div>
 
           {pageError && <div className="tables-error">{pageError}</div>}
@@ -475,6 +523,50 @@ export default function Tables({ userRol, selectedSede, onOpenOrder }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showBacktrackModal && (
+        <div className="tables-overlay" onClick={() => setShowBacktrackModal(false)}>
+          <div className="tables-modal" onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <h3 style={{ margin: 0, color: '#d4af37' }}>⚡ Ubicación Asistida (Backtracking)</h3>
+              <span style={{ fontSize: '0.75rem', background: 'rgba(212,175,55,0.15)', color: '#d4af37', padding: '0.2rem 0.5rem', borderRadius: '10px' }}>
+                Constraint Satisfaction
+              </span>
+            </div>
+            <p className="tables-hint" style={{ margin: '0 0 1rem' }}>
+              Ingresa el número de comensales. El algoritmo de vuelta atrás evaluará las mesas libres de la sede y seleccionará la mesa óptima sin conflictos de capacidad.
+            </p>
+
+            {errorBacktrack && <div className="tables-error">{errorBacktrack}</div>}
+
+            <div className="tables-form-group">
+              <label>Cantidad de Comensales:</label>
+              <input
+                type="number"
+                min="1"
+                max="20"
+                value={comensalesBacktrack}
+                onChange={(e) => setComensalesBacktrack(Number(e.target.value))}
+                autoFocus
+              />
+            </div>
+
+            <div className="tables-modal-actions">
+              <button type="button" className="tables-btn-secondary" onClick={() => setShowBacktrackModal(false)}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="tables-btn-primary"
+                onClick={ejecutarBacktrackMesas}
+                disabled={loadingBacktrack || comensalesBacktrack <= 0}
+              >
+                {loadingBacktrack ? 'Buscando mesa...' : 'Asignar Mesa'}
+              </button>
+            </div>
           </div>
         </div>
       )}

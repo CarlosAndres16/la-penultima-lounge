@@ -5,32 +5,17 @@ import CloseOrderModal from './CloseOrderModal';
 import Invoice from './Invoice';
 
 const API = 'http://localhost:3000/api/v1';
-const POLL_MS = 5000; // HU-23 CA-01: stock is re-read from the server every few seconds
+const POLL_MS = 5000;
 const money = (n) => `$ ${Number(n || 0).toLocaleString('es-CO')}`;
 
 /**
- * Order registration screen.
- * HU-23: for every product it shows the real-time stock of the branch; when the stock is zero the
- * "Add" action is disabled and the "Out of stock" label is shown. The server is the final judge:
- * it checks and discounts the stock in one atomic statement, so if two users ask for the same
- * product at once, the request that exceeds the remaining stock is rejected.
- *
- * HU-24 CA-04: while the order is open, the Waiter (or Administrator) can remove a product line;
- * the server gives the quantity back to the stock of the branch. A confirmation modal is shown first.
- *
- * HU-26 / HU-27 / HU-28 / HU-29: the Cashier (or Administrator) closes the order, chooses the payment method
- * and gets the invoice.
- * An open order with no products can be cancelled to free the table again (customers changed their mind).
- *
- * @param {Object} props.order - Order received from the table map (needs id_pedido, id_mesa, id_sede).
- * @param {string} props.userRol - Role of the logged-in user (only Waiter and Administrator can add products).
- * @param {Function} props.onBack - Returns to the table map.
+ * Order registration screen + Backtracking combo generator.
  */
 export default function OrderEntry({ order, userRol, onBack }) {
   const canAdd = userRol === 'Mesero' || userRol === 'Administrador';
-  const canRemove = canAdd; // HU-24 CA-04: same roles that add products
-  const canClose = userRol === 'Cajero' || userRol === 'Administrador'; // HU-28
-  const canCancel = userRol === 'Mesero' || userRol === 'Administrador'; // same roles that start orders (HU-22)
+  const canRemove = canAdd;
+  const canClose = userRol === 'Cajero' || userRol === 'Administrador';
+  const canCancel = userRol === 'Mesero' || userRol === 'Administrador';
 
   const [pedido, setPedido] = useState(order);
   const [productos, setProductos] = useState([]);
@@ -39,13 +24,21 @@ export default function OrderEntry({ order, userRol, onBack }) {
   const [orderClosed, setOrderClosed] = useState(false);
   const [quantities, setQuantities] = useState({});
   const [addingId, setAddingId] = useState(null);
-  const [removingId, setRemovingId] = useState(null); // line being removed (HU-24 CA-04)
+  const [removingId, setRemovingId] = useState(null);
   const [showClose, setShowClose] = useState(false);
   const [cancelling, setCancelling] = useState(false);
-  const [invoiceId, setInvoiceId] = useState(null); // invoice just issued when the order is closed
-  const [confirmDialog, setConfirmDialog] = useState(null); // { title, message, confirmLabel, onConfirm }
+  const [invoiceId, setInvoiceId] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState(null);
   const [toast, setToast] = useState(null);
   const closeToast = useCallback(() => setToast(null), []);
+
+  // Backtracking Combos State
+  const [showComboModal, setShowComboModal] = useState(false);
+  const [presupuestoCombo, setPresupuestoCombo] = useState(25000);
+  const [combosData, setCombosData] = useState(null);
+  const [loadingCombos, setLoadingCombos] = useState(false);
+  const [comboError, setComboError] = useState('');
+  const [addingCombo, setAddingCombo] = useState(false);
 
   const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 
@@ -66,7 +59,7 @@ export default function OrderEntry({ order, userRol, onBack }) {
     }
   }, [order.id_sede]);
 
-  // Current state of the order (lines and total); detects that it was closed by someone else
+  // Current state of the order
   const fetchPedido = useCallback(async () => {
     try {
       const res = await fetch(`${API}/pedidos/mesa/${order.id_mesa}`, { headers: authHeaders() });
@@ -123,11 +116,10 @@ export default function OrderEntry({ order, userRol, onBack }) {
       setToast({ message: err.message, type: 'error' });
     } finally {
       setAddingId(null);
-      fetchProductos(); // always show the real stock after an attempt (accepted or rejected)
+      fetchProductos();
     }
   };
 
-  // HU-24 CA-04: remove a product line from the open order; the server restores the branch stock
   const removeLine = async (linea) => {
     setRemovingId(linea.id_detalle_pedido);
     try {
@@ -142,10 +134,10 @@ export default function OrderEntry({ order, userRol, onBack }) {
       setToast({ message: `${linea.nombre_producto} removed from the order`, type: 'success' });
     } catch (err) {
       setToast({ message: err.message, type: 'error' });
-      fetchPedido(); // the order may have changed (or been closed) in the meantime
+      fetchPedido();
     } finally {
       setRemovingId(null);
-      fetchProductos(); // show the stock that was given back
+      fetchProductos();
     }
   };
 
@@ -158,7 +150,6 @@ export default function OrderEntry({ order, userRol, onBack }) {
     });
   };
 
-  // Cancel an order that has no products and free the table
   const cancelOrder = async () => {
     setCancelling(true);
     try {
@@ -168,18 +159,19 @@ export default function OrderEntry({ order, userRol, onBack }) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Failed to cancel the order');
-      onBack(); // the table is free again: back to the tables map
+      setToast({ message: `Order on table ${pedido.numero_mesa} cancelled`, type: 'success' });
+      onBack();
     } catch (err) {
       setToast({ message: err.message, type: 'error' });
+    } finally {
       setCancelling(false);
-      fetchPedido(); // the order may have received products in the meantime
     }
   };
 
   const handleCancelOrder = () => {
     setConfirmDialog({
       title: 'Cancel order',
-      message: `Cancel this order and free table ${pedido.numero_mesa}?`,
+      message: `Cancel order on table ${pedido.numero_mesa}? The table will be freed immediately.`,
       confirmLabel: 'Cancel order',
       onConfirm: cancelOrder,
     });
@@ -189,6 +181,51 @@ export default function OrderEntry({ order, userRol, onBack }) {
     const action = confirmDialog?.onConfirm;
     setConfirmDialog(null);
     if (action) action();
+  };
+
+  // Backtracking: Generar combos exactos
+  const buscarCombosBacktracking = async () => {
+    setLoadingCombos(true);
+    setComboError('');
+    try {
+      const res = await fetch(`${API}/algoritmos/backtracking-combos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ valorObjetivo: presupuestoCombo })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al generar combos');
+      setCombosData(data);
+    } catch (err) {
+      setComboError(err.message);
+    } finally {
+      setLoadingCombos(false);
+    }
+  };
+
+  // Cargar todos los productos de un combo en el pedido
+  const aplicarComboAlPedido = async (combo) => {
+    setAddingCombo(true);
+    try {
+      for (const item of combo.items) {
+        await fetch(`${API}/pedidos/${pedido.id_pedido}/items`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({ id_producto: item.id_producto, cantidad: 1 })
+        });
+      }
+      await fetchPedido();
+      await fetchProductos();
+      setShowComboModal(false);
+      setToast({
+        message: `Combo exacto de ${money(combo.valorTotal)} (${combo.items.length} productos) agregado a la orden`,
+        type: 'success'
+      });
+    } catch (err) {
+      setToast({ message: `Error agregando combo: ${err.message}`, type: 'error' });
+    } finally {
+      setAddingCombo(false);
+    }
   };
 
   const lineas = pedido.lineas || [];
@@ -203,9 +240,21 @@ export default function OrderEntry({ order, userRol, onBack }) {
             Table {pedido.numero_mesa} · Order #{String(pedido.id_pedido).padStart(4, '0')} · {pedido.estado}
           </p>
         </div>
-        <button type="button" className="order-btn-secondary" onClick={onBack}>
-          ← Back to tables
-        </button>
+        <div style={{ display: 'flex', gap: '0.6rem' }}>
+          {canAdd && !orderClosed && (
+            <button
+              type="button"
+              className="order-btn-secondary"
+              onClick={() => { setShowComboModal(true); if (!combosData) buscarCombosBacktracking(); }}
+              style={{ borderColor: '#d4af37', color: '#d4af37', fontWeight: 600 }}
+            >
+              ⚡ Sugerir Combo (Backtracking)
+            </button>
+          )}
+          <button type="button" className="order-btn-secondary" onClick={onBack}>
+            ← Back to tables
+          </button>
+        </div>
       </div>
 
       {orderClosed && !invoiceId && (
@@ -259,7 +308,7 @@ export default function OrderEntry({ order, userRol, onBack }) {
                           onClick={() => handleAdd(p)}
                           disabled={outOfStock || busy}
                         >
-                          {busy ? 'Adding...' : 'Add'}
+                          {busy ? '...' : 'Add'}
                         </button>
                       </div>
                     </li>
@@ -340,6 +389,97 @@ export default function OrderEntry({ order, userRol, onBack }) {
         </section>
       </div>
 
+      {/* Modal de Combos con Backtracking */}
+      {showComboModal && (
+        <div className="billing-overlay" onClick={() => setShowComboModal(false)}>
+          <div
+            className="billing-modal"
+            style={{ maxWidth: '600px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <h3 style={{ color: '#d4af37', margin: 0 }}>⚡ Sugerir Combo Exacto (Backtracking)</h3>
+              <span style={{ fontSize: '0.75rem', background: 'rgba(212,175,55,0.15)', color: '#d4af37', padding: '0.2rem 0.5rem', borderRadius: '10px' }}>
+                Subset Sum con Poda O(2^N)
+              </span>
+            </div>
+            <p className="billing-sub">
+              Ingresa el presupuesto o bono del cliente. El algoritmo explorará el catálogo con vuelta atrás y podas para hallar las combinaciones exactas.
+            </p>
+
+            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-end', marginBottom: '1rem' }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                <label style={{ fontSize: '0.8rem', color: '#a89f91' }}>Presupuesto Exacto ($):</label>
+                <input
+                  type="number"
+                  step="1000"
+                  value={presupuestoCombo}
+                  onChange={(e) => setPresupuestoCombo(Number(e.target.value))}
+                  style={{ padding: '0.55rem', background: '#242424', border: '1px solid #4a3b32', color: '#fff', borderRadius: '4px' }}
+                />
+              </div>
+              <button
+                type="button"
+                className="billing-btn billing-btn-primary"
+                onClick={buscarCombosBacktracking}
+                disabled={loadingCombos || presupuestoCombo <= 0}
+                style={{ height: '38px', padding: '0 1rem' }}
+              >
+                {loadingCombos ? 'Buscando...' : 'Buscar'}
+              </button>
+            </div>
+
+            {comboError && <div className="billing-error">{comboError}</div>}
+
+            {combosData && (
+              <div>
+                <div style={{ fontSize: '0.8rem', color: '#a89f91', marginBottom: '0.5rem' }}>
+                  Encontradas: <strong style={{ color: '#fff' }}>{combosData.totalCombinacionesEncontradas} combinaciones</strong> ·
+                  Ramas podadas: <strong style={{ color: '#66bb6a' }}>{combosData.metricasAlgoritmo.eficienciaPoda}</strong>
+                </div>
+
+                {combosData.combinaciones.length === 0 ? (
+                  <p className="order-hint">No hay combinación de productos que sume exactamente {money(presupuestoCombo)}.</p>
+                ) : (
+                  <div style={{ maxHeight: '250px', overflowY: 'auto', border: '1px solid #2e2621', borderRadius: '4px' }}>
+                    {combosData.combinaciones.map((c) => (
+                      <div
+                        key={c.comboId}
+                        style={{ padding: '0.75rem', borderBottom: '1px solid #241d18', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                      >
+                        <div style={{ flex: 1, marginRight: '0.75rem' }}>
+                          <div style={{ fontWeight: 600, color: '#d4af37', fontSize: '0.88rem' }}>
+                            Opción {c.comboId} — {money(c.valorTotal)}
+                          </div>
+                          <div style={{ fontSize: '0.8rem', color: '#c9c2b5', marginTop: '0.2rem' }}>
+                            {c.items.map((it) => it.nombre).join(' + ')}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="billing-btn billing-btn-primary"
+                          onClick={() => aplicarComboAlPedido(c)}
+                          disabled={addingCombo}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+                        >
+                          {addingCombo ? '...' : '+ Agregar a Orden'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="billing-actions" style={{ marginTop: '1rem' }}>
+              <button type="button" className="billing-btn" onClick={() => setShowComboModal(false)}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showClose && (
         <CloseOrderModal
           order={pedido}
@@ -356,7 +496,7 @@ export default function OrderEntry({ order, userRol, onBack }) {
           idFactura={invoiceId}
           onClose={() => {
             setInvoiceId(null);
-            onBack(); // the table is free again: back to the tables map
+            onBack();
           }}
         />
       )}
