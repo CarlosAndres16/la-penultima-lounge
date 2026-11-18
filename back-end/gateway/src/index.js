@@ -31,7 +31,8 @@ app.use(
       '/api/v1/pedidos',
       '/api/v1/medios-pago',
       '/api/v1/facturas',
-      '/api/v1/reportes'
+      '/api/v1/reportes',
+      '/api/v1/algoritmos'
     ],
   })
 );
